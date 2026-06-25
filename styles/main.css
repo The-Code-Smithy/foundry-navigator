@@ -1,0 +1,30 @@
+/* Foundry Navigator - screen-reader and focus utilities. */
+
+.fn-sr-only {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  opacity: 0.01;
+  pointer-events: none;
+}
+
+:focus-visible {
+  outline: 3px solid #4d9fec !important;
+  outline-offset: 2px !important;
+}
+
+.app :focus-visible,
+.application :focus-visible {
+  outline: 3px solid #4d9fec !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #4d9fec !important;
+}

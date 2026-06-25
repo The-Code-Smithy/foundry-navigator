@@ -1,0 +1,19 @@
+{
+  "name": "foundry-navigator",
+  "version": "0.16.0",
+  "description": "Keyboard-first and screen-reader-friendly navigation tools for Foundry VTT v13 and v14.",
+  "main": "playwright.config.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "playwright test"
+  },
+  "keywords": [],
+  "author": "DeathStar Jim",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}
