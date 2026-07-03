@@ -248,6 +248,19 @@ test("Alt+C registers as the character sheet shortcut", async ({ page }) =>
     });
 });
 
+test("default keyboard shortcuts dispatch in Chrome", async ({ page }) =>
+{
+    await joinAsTester(page);
+    await expectDefaultShortcutsDispatch(page);
+});
+
+test("default keyboard shortcuts dispatch with screen reader announcements enabled", async ({ page }) =>
+{
+    await joinAsTester(page);
+    await enableScreenReaderAnnouncements(page);
+    await expectDefaultShortcutsDispatch(page);
+});
+
 test("structured roll history narrates matching attack and damage cards", async ({ page }) =>
 {
     await joinAsTester(page);
@@ -523,6 +536,155 @@ async function chooseNormalRoll(page)
     await normalButton.click();
 }
 
+const DEFAULT_SHORTCUTS = [
+    { action: "whereAmI", chord: "Alt+Shift+KeyW", configured: [{ key: "KeyW", modifiers: ["Alt", "Shift"] }] },
+    { action: "readLastRollResult", chord: "Alt+Shift+KeyR", configured: [{ key: "KeyR", modifiers: ["Alt", "Shift"] }] },
+    { action: "readRollHistory1", chord: "Alt+Digit1", configured: [{ key: "Digit1", modifiers: ["Alt"] }] },
+    { action: "readRollHistory2", chord: "Alt+Digit2", configured: [{ key: "Digit2", modifiers: ["Alt"] }] },
+    { action: "readRollHistory3", chord: "Alt+Digit3", configured: [{ key: "Digit3", modifiers: ["Alt"] }] },
+    { action: "readRollHistory4", chord: "Alt+Digit4", configured: [{ key: "Digit4", modifiers: ["Alt"] }] },
+    { action: "readRollHistory5", chord: "Alt+Digit5", configured: [{ key: "Digit5", modifiers: ["Alt"] }] },
+    { action: "readRollHistory6", chord: "Alt+Digit6", configured: [{ key: "Digit6", modifiers: ["Alt"] }] },
+    { action: "readRollHistory7", chord: "Alt+Digit7", configured: [{ key: "Digit7", modifiers: ["Alt"] }] },
+    { action: "readRollHistory8", chord: "Alt+Digit8", configured: [{ key: "Digit8", modifiers: ["Alt"] }] },
+    { action: "readRollHistory9", chord: "Alt+Digit9", configured: [{ key: "Digit9", modifiers: ["Alt"] }] },
+    { action: "openNavigatorSettings", chord: "Alt+Shift+KeyA", configured: [{ key: "KeyA", modifiers: ["Alt", "Shift"] }] },
+    { action: "openConfigureControls", chord: "Alt+Shift+KeyK", configured: [{ key: "KeyK", modifiers: ["Alt", "Shift"] }] },
+    { action: "toggleGamePause", chord: "Alt+Shift+KeyP", configured: [{ key: "KeyP", modifiers: ["Alt", "Shift"] }] },
+    { action: "openMyCharacterSheet", chord: "Alt+KeyC", configured: [{ key: "KeyC", modifiers: ["Alt"] }] },
+    { action: "focusCharacterSheetTabs", chord: "Alt+Shift+KeyH", configured: [{ key: "KeyH", modifiers: ["Alt", "Shift"] }] },
+    { action: "toggleKeyboardTokenTarget", chord: "Alt+Shift+KeyT", configured: [{ key: "KeyT", modifiers: ["Alt", "Shift"] }] },
+];
+
+async function enableScreenReaderAnnouncements(page)
+{
+    await page.evaluate(async () =>
+    {
+        const settings = [
+            "announceChatMessages",
+            "announceRollResults",
+            "announceCombatTurns",
+            "announceNotifications",
+            "announceTokenMove",
+            "announceTokenCreateDelete",
+            "announceHpChanges",
+            "announceConditions",
+        ];
+
+        for (const key of settings)
+        {
+            await game.settings.set("foundry-navigator", key, true);
+        }
+    });
+}
+
+async function installShortcutRecorder(page, shortcuts)
+{
+    await page.evaluate((entries) =>
+    {
+        globalThis.__fnShortcutRecorder?.restore?.();
+
+        const originals = [];
+        const hits = [];
+        const wrapHandler = (target, property, actionId) =>
+        {
+            if (!target || typeof target[property] !== "function") return;
+            const original = target[property];
+            originals.push({ target, property, original });
+            target[property] = () =>
+            {
+                hits.push(actionId);
+                return true;
+            };
+        };
+
+        for (const entry of entries)
+        {
+            const actionId = `foundry-navigator.${entry.action}`;
+            const action = game.keybindings.actions?.get?.(actionId);
+            if (!action)
+            {
+                throw new Error(`Missing keybinding action ${actionId}`);
+            }
+
+            wrapHandler(action, "onDown", actionId);
+
+            for (const binding of game.keybindings.activeKeys.get(entry.configured[0].key) ?? [])
+            {
+                if (binding?.action !== actionId) continue;
+                wrapHandler(binding, "onDown", actionId);
+            }
+        }
+
+        globalThis.__fnShortcutRecorder = {
+            hits,
+            restore()
+            {
+                for (const original of originals)
+                {
+                    original.target[original.property] = original.original;
+                }
+            },
+        };
+    }, shortcuts);
+}
+
+async function restoreShortcutRecorder(page)
+{
+    await page.evaluate(() => globalThis.__fnShortcutRecorder?.restore?.()).catch(() => {});
+}
+
+async function expectDefaultShortcutsDispatch(page)
+{
+    const configuration = await page.evaluate((entries) =>
+    {
+        return entries.map(entry =>
+        {
+            const actionId = `foundry-navigator.${entry.action}`;
+            const activeBindings = (game.keybindings.activeKeys.get(entry.configured[0].key) ?? [])
+                .filter(candidate => candidate.action === actionId)
+                .map(candidate => ({
+                    action: candidate.action,
+                    requiredModifiers: candidate.requiredModifiers,
+                }));
+
+            return {
+                action: entry.action,
+                configured: game.keybindings.get("foundry-navigator", entry.action),
+                activeBindings,
+            };
+        });
+    }, DEFAULT_SHORTCUTS);
+
+    for (const entry of DEFAULT_SHORTCUTS)
+    {
+        const actual = configuration.find(candidate => candidate.action === entry.action);
+        expect(actual.configured).toEqual(entry.configured);
+        expect(actual.activeBindings).toContainEqual({
+            action: `foundry-navigator.${entry.action}`,
+            requiredModifiers: entry.configured[0].modifiers,
+        });
+    }
+
+    await installShortcutRecorder(page, DEFAULT_SHORTCUTS);
+
+    try
+    {
+        await page.locator("body").click({ position: { x: 10, y: 10 } });
+        for (const entry of DEFAULT_SHORTCUTS)
+        {
+            await page.keyboard.press(entry.chord);
+        }
+
+        const hits = await page.evaluate(() => globalThis.__fnShortcutRecorder?.hits ?? []);
+        expect(hits).toEqual(DEFAULT_SHORTCUTS.map(entry => `foundry-navigator.${entry.action}`));
+    }
+    finally
+    {
+        await restoreShortcutRecorder(page);
+    }
+}
+
 test("Alt+Shift+H returns focus to the active tab well on the current character sheet", async ({ page }) =>
 {
     await joinAsTester(page);
@@ -551,6 +713,73 @@ test("Alt+Shift+H still works after changing the actor between Tidy and default 
         "dnd5e.CharacterActorSheet"
     );
     await focusShouldReturnToTab(page, defaultSheet, "Features");
+});
+
+test("combat turn weapon picker preselects the first equipped weapon before targeting", async ({ page }) =>
+{
+    await joinAsTester(page);
+
+    await setCharacterSheetClass(
+        page,
+        TEST_ACTOR_NAME,
+        "dnd5e.Tidy5eCharacterSheetQuadrone"
+    );
+
+    const actionNames = await page.evaluate(async (actorName) =>
+    {
+        const actor = game.user?.character
+            ?? game.actors?.find(candidate => candidate?.type === "character" && candidate?.name === actorName)
+            ?? game.actors?.find(candidate => candidate?.type === "character" && candidate?.isOwner);
+
+        actor.sheet?.render?.(true);
+
+        globalThis.__fnCombatWeaponPromptPromise = globalThis.FoundryNavigatorCombatTunnel.promptCombatTurnWeaponSelection(
+            actor.sheet,
+            actor
+        );
+
+        return (actor.items?.contents ?? [])
+            .filter(item =>
+            {
+                const weaponType = item?.system?.type?.value ?? item?.system?.type ?? "";
+                const isMeleeOrRangedWeapon = /(?:M|R)$/.test(weaponType) || weaponType === "natural";
+                return item?.type === "weapon" && item?.system?.equipped === true && isMeleeOrRangedWeapon;
+            })
+            .filter(item =>
+            {
+                const attackActivity = item?.system?.activities
+                    ?.filter?.(activity => activity?.type === "attack" && activity?.canUse)
+                    ?.[0];
+                const usableActivity = item?.system?.activities
+                    ?.filter?.(activity => activity?.canUse)
+                    ?.[0];
+                return !!attackActivity?.rollAttack || !!usableActivity?.use;
+            })
+            .sort((left, right) =>
+                (left.name ?? "").localeCompare(right.name ?? ""))
+            .map(item => item.name);
+    }, TEST_ACTOR_NAME);
+
+    expect(actionNames.length).toBeGreaterThan(0);
+
+    const weaponPicker = page.locator(".fn-weapon-picker__form").filter({ visible: true }).last();
+    await expectFocusInside(page, weaponPicker);
+    await expect(page.getByRole("heading", { name: "Choose Weapon" })).toBeVisible({ timeout: 25000 });
+
+    const firstWeaponChoice = weaponPicker.locator('input[name="fn-combat-action-choice"]').first();
+    await expect(firstWeaponChoice).toBeVisible({ timeout: 25000 });
+    await expect(firstWeaponChoice).toBeFocused({ timeout: 25000 });
+    await expect(firstWeaponChoice).toBeChecked();
+    await expect(firstWeaponChoice).toHaveAttribute("aria-label", new RegExp(actionNames[0], "i"));
+
+    await expect(weaponPicker.locator('input[name="fn-combat-action-choice"]')).toHaveCount(actionNames.length);
+    await weaponPicker.locator('button[type="submit"]').click();
+
+    const targetPicker = await expectTargetPickerReady(page);
+    await targetPicker.locator('[data-action="cancel"]').click();
+
+    const promptResult = await page.evaluate(async () => globalThis.__fnCombatWeaponPromptPromise);
+    expect(promptResult).toBe(false);
 });
 
 test("combat tunnel keeps focus anchored through targeting and damage flow", async ({ page }) =>

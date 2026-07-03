@@ -9,7 +9,9 @@ import {
     focusDialogControl,
     getApplicationIdentity,
     getVisibleApplicationElements,
+    makeCombatDialogDraggable,
     showAccessibleTargetPicker,
+    showAccessibleWeaponPicker,
 } from "./interaction-helpers.js";
 import {
     getInventoryRowElement,
@@ -162,6 +164,177 @@ export function createCombatActivationHandlers({
         }
 
         return false;
+    }
+
+    function getItemAttackActivity(item)
+    {
+        const activities = item?.system?.activities;
+        if (!activities?.filter) return null;
+        return activities.filter(activity => activity?.type === "attack" && activity?.canUse)?.[0] ?? null;
+    }
+
+    function getItemUsableActivity(item)
+    {
+        const activities = item?.system?.activities;
+        if (!activities?.filter) return null;
+        return activities.filter(activity => activity?.canUse)?.[0] ?? null;
+    }
+
+    function isCombatTurnSpellChoice(item)
+    {
+        if (item?.type !== "spell") return false;
+
+        const spellLevel = Number(item?.system?.level);
+        if (spellLevel === 0) return true;
+
+        return item?.system?.preparation?.prepared === true;
+    }
+
+    function isCombatTurnWeaponChoice(item)
+    {
+        const weaponType = item?.system?.type?.value ?? item?.system?.type ?? "";
+        const isMeleeOrRangedWeapon = /(?:M|R)$/.test(weaponType) || weaponType === "natural";
+        return item?.type === "weapon" && item?.system?.equipped === true && isMeleeOrRangedWeapon;
+    }
+
+    function getCombatActionActivationControl(item)
+    {
+        const root = FN_SHEET_TABS_STATE.activeRoot;
+        if (!(root instanceof HTMLElement) || !item?.id) return null;
+
+        const row = root.querySelector(`[data-item-id="${CSS.escape(item.id)}"], [data-tidy-item-id="${CSS.escape(item.id)}"]`);
+        if (!(row instanceof HTMLElement)) return null;
+
+        return row.querySelector(".tidy-table-row-use-button, [data-action='use'], [data-action='rollAttack'], .item-name, .item-action, .rollable")
+            ?? row;
+    }
+
+    function getCombatTurnActionChoices(actor)
+    {
+        return (actor?.items?.contents ?? [])
+            .filter(item => isCombatTurnWeaponChoice(item))
+            .filter(item => getItemAttackActivity(item)?.rollAttack || getItemUsableActivity(item)?.use)
+            .sort((left, right) =>
+            {
+                return (left.name ?? "").localeCompare(right.name ?? "");
+            });
+    }
+
+    async function activateWeaponItem(item, app, event = null)
+    {
+        const attackActivity = getItemAttackActivity(item);
+        const usableActivity = getItemUsableActivity(item);
+        if (!attackActivity?.rollAttack && !usableActivity?.use) return false;
+
+        const activationTarget = getCombatActionActivationControl(item);
+        if (activationTarget instanceof HTMLElement)
+        {
+            FN_SHEET_TABS_STATE.lastAttackControl = activationTarget;
+            FN_SHEET_TABS_STATE.lastAttackControlDescriptor = getAttackControlDescriptor(activationTarget);
+        }
+        else
+        {
+            FN_SHEET_TABS_STATE.lastAttackControl = null;
+            FN_SHEET_TABS_STATE.lastAttackControlDescriptor = null;
+        }
+
+        const itemName = item?.name ?? "";
+        if (attackActivity?.rollAttack)
+        {
+            const candidates = getActivityTargetCandidates(app);
+            if (candidates.length)
+            {
+                const selectedToken = await showAccessibleTargetPicker({ app, itemName, candidates, debug });
+                if (!selectedToken)
+                {
+                    debug("combat action target picker cancelled", {
+                        appId: app?.id,
+                        itemName,
+                    });
+                    return false;
+                }
+
+                setSingleUserTarget(selectedToken);
+                await waitForTargetRegistration(selectedToken);
+                FN_SHEET_TABS_STATE.pendingAttack = {
+                    app,
+                    activity: attackActivity,
+                    targetToken: selectedToken,
+                    itemName,
+                };
+            }
+
+            return triggerAttackActivityFlow(attackActivity, app, event);
+        }
+
+        if (item?.type === "spell")
+        {
+            const candidates = getActivityTargetCandidates(app, { preferSelf: true });
+            if (candidates.length)
+            {
+                const selectedToken = await showAccessibleTargetPicker({ app, itemName, candidates, debug });
+                if (!selectedToken)
+                {
+                    debug("combat spell target picker cancelled", {
+                        appId: app?.id,
+                        itemName,
+                    });
+                    return false;
+                }
+
+                setSingleUserTarget(selectedToken);
+                await waitForTargetRegistration(selectedToken);
+                stageConsumableTargetApplication({
+                    app,
+                    activity: usableActivity,
+                    targetToken: selectedToken,
+                    itemName,
+                });
+                debug("combat spell target selected", {
+                    appId: app?.id,
+                    itemName,
+                    targetId: selectedToken.id,
+                    targetName: selectedToken.name,
+                    activityType: usableActivity?.type,
+                });
+            }
+        }
+
+        const previousWindowIds = new Set(getVisibleApplicationElements().map(getApplicationIdentity).filter(Boolean));
+        void usableActivity.use({ event }, { options: { sheet: app } });
+        focusActivationResult(previousWindowIds, {
+            originatingApp: app,
+            debug,
+            getApplicationElement,
+        });
+        debug("triggered combat spell activity", {
+            appId: app?.id,
+            itemName,
+            activityType: usableActivity?.type,
+        });
+        return true;
+    }
+
+    async function promptCombatTurnWeaponSelection(app, actor)
+    {
+        const actions = getCombatTurnActionChoices(actor);
+        if (!actions.length)
+        {
+            debug("combat weapon picker skipped: no equipped melee or ranged weapons", {
+                appId: app?.id,
+                actorName: actor?.name,
+            });
+            return false;
+        }
+
+        const item = await showAccessibleWeaponPicker({
+            actorName: actor?.name,
+            weapons: actions,
+            debug,
+        });
+        if (!item) return false;
+
+        return activateWeaponItem(item, app, null);
     }
 
     function stageConsumableTargetApplication({ app, activity, targetToken, itemName })
@@ -391,6 +564,7 @@ export function createCombatActivationHandlers({
         });
         document.body.append(dialog);
         dialog.showModal();
+        makeCombatDialogDraggable(dialog, { debug });
         // Focus the correct button in a single rAF after showModal() so the
         // browser's modal focus trap is fully established before we move focus.
         // Using a direct rAF (not double rAF + dialog.focus()) avoids a window
@@ -480,7 +654,9 @@ export function createCombatActivationHandlers({
 
     return {
         activateInventoryControl,
+        activateWeaponItem,
         openAttackResultDialog,
+        promptCombatTurnWeaponSelection,
         restoreLastAttackControlFocus,
     };
 }

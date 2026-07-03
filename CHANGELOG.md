@@ -1,10 +1,15 @@
-### v0.16.0
+### v0.17.0
 
 - Added structured roll history shortcuts: `Alt+1` reads the most recent roll event, through `Alt+9` for older roll results.
 - Improved roll-result narration by combining matching attack and damage cards into a more useful summary when target and damage details are available.
 - Added `Alt+Shift+P` as a configurable GM pause/unpause shortcut for screen-reader users when Space is intercepted.
 - Changed the default character-sheet shortcut from `C` to `Alt+C` to avoid screen-reader browse-mode conflicts, with migration for known older defaults.
 - Added `Ctrl+S` inside Foundry's Configure Controls dialog to save keybinding changes without mouse navigation.
+- Added a combat-turn weapon picker that opens at the start of the player's turn and lists equipped melee/ranged weapons so players do not have to tab through a full inventory to attack.
+- Made combat tunnel dialogs draggable by their headers and added collapsed item descriptions to the weapon picker where item description text is available.
+- Added backlog tracking for keyboard placement of D&D 5e area effects, including Foundry v13 measured templates and Foundry v14 region/area placement.
+- Hid Foundry's minimum-resolution warning banner by default, with a client setting to show it again if desired.
+- Added automatic low-resolution accessibility mode below 1024x768 to constrain Foundry windows to the viewport and keep focused controls scrolled into view.
 
 ### v0.15.0
 

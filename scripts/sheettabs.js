@@ -221,7 +221,9 @@ function debugSheetMarkup(root, app, requestedTabId = null)
 
 const {
     activateInventoryControl,
+    activateWeaponItem,
     openAttackResultDialog,
+    promptCombatTurnWeaponSelection,
     restoreLastAttackControlFocus,
 } = createCombatActivationHandlers({
     debug: debugSheetTabs,
@@ -231,6 +233,30 @@ const {
     isRenderedElement,
     setActiveActorSheet,
 });
+
+async function openActorSheetForCombatant(combatant)
+{
+    const actor = combatant?.actor ?? combatant?.token?.actor ?? null;
+    if (!actor?.sheet) return { app: null, actor: null, root: null };
+
+    await actor.sheet.render(true);
+    const app = actor.sheet;
+
+    let tries = 20;
+    while (tries-- > 0)
+    {
+        const root = getApplicationElement(app, app?.element);
+        if (root instanceof HTMLElement && isRenderedElement(root))
+        {
+            setActiveActorSheet(app, root);
+            return { app, actor, root };
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    return { app, actor, root: null };
+}
 
 const {
     handleModuleSocketMessage,
@@ -309,6 +335,10 @@ registerStoredSheetTabDebugHelpers({
     getApplicationElement,
     isActorSheetApplication,
 });
+globalThis.FoundryNavigatorCombatTunnel = {
+    activateWeaponItem,
+    promptCombatTurnWeaponSelection,
+};
 registerDocumentInventoryAssistiveHandlers();
 
 function syncTabKeyboardSupport(root, app)
@@ -710,4 +740,6 @@ registerSheetTabBootstrap({
     openAttackResultDialog,
     handleRollDamageHook,
     registerFocusedItemUseIntercept,
+    promptCombatTurnWeaponSelection,
+    openActorSheetForCombatant,
 });

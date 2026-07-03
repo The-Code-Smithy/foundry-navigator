@@ -73,6 +73,13 @@ test("module shortcuts avoid browser and Foundry core conflicts", () =>
     expect(screenreader).toContain("editable: [{ key: 'KeyR', modifiers: ['Alt', 'Shift'] }]");
     expect(screenreader).toContain("editable: [{ key: `Digit${index}`, modifiers: ['Alt'] }]");
     expect(screenreader).toContain("getStructuredRollNarration");
+    expect(screenreader).toContain("'showMinimumResolutionWarning'");
+    expect(screenreader).toContain("function suppressMinimumResolutionWarning");
+    expect(screenreader).toContain("1024");
+    expect(screenreader).toContain("'lowResolutionMode'");
+    expect(screenreader).toContain("function updateLowResolutionMode");
+    expect(screenreader).toContain("handleLowResolutionFocusIn");
+    expect(fs.readFileSync(path.join(repoRoot, "styles", "main.css"), "utf8")).toContain("fn-low-resolution-mode");
     expect(screenreader).toContain("editable: [{ key: 'KeyW', modifiers: ['Alt', 'Shift'] }]");
     expect(screenreader).toContain("editable: [{ key: 'KeyP', modifiers: ['Alt', 'Shift'] }]");
     expect(screenreader).toContain("async function toggleGamePause()");
@@ -100,4 +107,34 @@ test("known legacy defaults are migrated without replacing arbitrary custom bind
     expect(screenreader).toContain('action: "foundry-navigator.focusCharacterSheetTabs"');
     expect(screenreader).toContain('action: "foundry-navigator.openMyCharacterSheet"');
     expect(screenreader).toContain("legacy.some(binding => keybindingListsMatch(current, binding))");
+});
+
+test("combat turn picker lists equipped melee and ranged weapons only", () =>
+{
+    const combatActivation = fs.readFileSync(path.join(repoRoot, "scripts", "sheettabs", "combat-activation.js"), "utf8");
+    const interactionHelpers = fs.readFileSync(path.join(repoRoot, "scripts", "sheettabs", "interaction-helpers.js"), "utf8");
+
+    expect(combatActivation).toContain("isCombatTurnWeaponChoice");
+    expect(combatActivation).toContain("isMeleeOrRangedWeapon");
+    expect(combatActivation).toContain(".filter(item => isCombatTurnWeaponChoice(item))");
+    expect(combatActivation).toContain("getItemUsableActivity");
+    expect(combatActivation).toContain("item?.system?.equipped === true");
+    expect(combatActivation).toContain("combat weapon picker skipped: no equipped melee or ranged weapons");
+    expect(combatActivation).not.toContain('.filter(item => item?.type === "weapon" || item?.type === "spell")');
+
+    // Keep dormant spell support helpers in place for the future keyboard template/region placement flow.
+    expect(combatActivation).toContain("isCombatTurnSpellChoice");
+    expect(combatActivation).toContain("spellLevel === 0");
+    expect(combatActivation).toContain("item?.system?.preparation?.prepared === true");
+    expect(combatActivation).toContain('item?.type === "spell"');
+    expect(combatActivation).toContain("getActivityTargetCandidates(app, { preferSelf: true })");
+    expect(combatActivation).toContain("combat spell target selected");
+    expect(combatActivation).toContain("makeCombatDialogDraggable");
+    expect(combatActivation).toContain("triggered combat spell activity");
+    expect(interactionHelpers).toContain("Choose Weapon");
+    expect(interactionHelpers).toContain("Select an equipped weapon for this turn.");
+    expect(interactionHelpers).toContain('name="fn-combat-action-choice"');
+    expect(interactionHelpers).toContain("makeCombatDialogDraggable");
+    expect(interactionHelpers).toContain("fn-weapon-picker__description");
+    expect(interactionHelpers).toContain('const checked = index === 0 ? \' checked="checked"\' : ""');
 });

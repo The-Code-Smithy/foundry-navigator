@@ -56,6 +56,31 @@ Hooks.on("init", () =>
         onChange: () => { },
     });
 
+    game.settings.register('foundry-navigator', 'showMinimumResolutionWarning', {
+        name: 'Show Minimum Resolution Warning',
+        hint: "Shows Foundry's minimum browser resolution warning. Disabled by default because the alert banner can block keyboard and screen-reader workflows.",
+        scope: 'client',
+        config: true,
+        type: Boolean,
+        default: false,
+        onChange: () => { },
+    });
+
+    game.settings.register('foundry-navigator', 'lowResolutionMode', {
+        name: 'Low Resolution Accessibility Mode',
+        hint: 'Keeps Foundry windows inside the viewport and scrolls focused controls into view. Auto enables below 1024x768.',
+        scope: 'client',
+        config: true,
+        type: String,
+        choices: {
+            auto: 'Auto below 1024x768',
+            on: 'Always on',
+            off: 'Off',
+        },
+        default: 'auto',
+        onChange: () => updateLowResolutionMode(),
+    });
+
     game.settings.register('foundry-navigator', 'announceTokenMove', {
         name: 'Announce Token Movement',
         hint: 'Screen reader announces when your owned tokens move, including their new grid coordinate.',
@@ -199,6 +224,7 @@ Hooks.on("ready", () =>
         console.warn("Foundry Navigator could not migrate legacy keybinding defaults.", error);
     });
     focusCanvasAfterReady();
+    updateLowResolutionMode();
 
     const handleKeybindingsControlsKeyEvent = (event) =>
     {
@@ -291,6 +317,8 @@ Hooks.on("ready", () =>
 
     document.addEventListener("keydown", handleKeybindingsControlsKeyEvent, true);
     document.addEventListener("keyup", handleKeybindingsControlsKeyEvent, true);
+    document.addEventListener("focusin", handleLowResolutionFocusIn, true);
+    window.addEventListener("resize", updateLowResolutionMode);
 });
 
 async function migrateLegacyDefaultKeybindings()
@@ -630,6 +658,41 @@ function focusCanvasAfterReady(tries = 10)
     {
         setTimeout(attemptFocus, 250 * index);
     }
+}
+
+function isViewportLowResolution()
+{
+    return window.innerWidth < 1024 || window.innerHeight < 768;
+}
+
+function isLowResolutionModeEnabled()
+{
+    const mode = game.settings.get('foundry-navigator', 'lowResolutionMode');
+    if (mode === "on") return true;
+    if (mode === "off") return false;
+    return isViewportLowResolution();
+}
+
+function updateLowResolutionMode()
+{
+    const enabled = isLowResolutionModeEnabled();
+    document.body?.classList.toggle("fn-low-resolution-mode", enabled);
+}
+
+function handleLowResolutionFocusIn(event)
+{
+    if (!document.body?.classList.contains("fn-low-resolution-mode")) return;
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.closest(".window-app, .application, dialog")) return;
+
+    requestAnimationFrame(() =>
+    {
+        target.scrollIntoView?.({
+            block: "nearest",
+            inline: "nearest",
+        });
+    });
 }
 
 function getPreferredCharacterActor()
@@ -1741,13 +1804,37 @@ Hooks.on("updateCombat", (combat, changed) =>
 // Track the last count we saw so we only announce newly added notifications
 let _lastNotificationCount = 0;
 
+function isMinimumResolutionWarning(notification)
+{
+    const text = normalizeAnnouncementText(notification?.textContent ?? "");
+    if (!text) return false;
+
+    return /1024\s*[x×]\s*768/i.test(text)
+        || /minimum .*resolution/i.test(text)
+        || /resolution .*minimum/i.test(text);
+}
+
+function suppressMinimumResolutionWarning(root)
+{
+    if (game.settings.get('foundry-navigator', 'showMinimumResolutionWarning')) return;
+    if (!(root instanceof HTMLElement)) return;
+
+    for (const notification of root.querySelectorAll("li.notification"))
+    {
+        if (!isMinimumResolutionWarning(notification)) continue;
+        notification.remove();
+    }
+}
+
 Hooks.on("renderNotifications", (app, html) =>
 {
-    if (!game.settings.get('foundry-navigator', 'announceNotifications')) return;
-
     // html may be HTMLElement (AppV2) or jQuery (AppV1)
     const root = html instanceof HTMLElement ? html : html[0];
     if (!root) return;
+
+    suppressMinimumResolutionWarning(root);
+
+    if (!game.settings.get('foundry-navigator', 'announceNotifications')) return;
 
     const unannounced = root.querySelectorAll("li.notification:not([data-fn-announced])");
     for (const notification of unannounced)

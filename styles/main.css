@@ -28,3 +28,64 @@
   outline-offset: 2px !important;
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px #4d9fec !important;
 }
+
+body.fn-low-resolution-mode .window-app,
+body.fn-low-resolution-mode .application,
+body.fn-low-resolution-mode dialog.application {
+  max-width: calc(100vw - 8px) !important;
+  max-height: calc(100vh - 8px) !important;
+}
+
+body.fn-low-resolution-mode .window-content,
+body.fn-low-resolution-mode .application .window-content,
+body.fn-low-resolution-mode dialog.application .window-content {
+  overflow: auto !important;
+  max-height: calc(100vh - 96px) !important;
+  scroll-padding: 1rem;
+}
+
+body.fn-low-resolution-mode .app.window-app {
+  min-width: min(100vw - 8px, 320px) !important;
+}
+
+.fn-weapon-picker__list,
+.fn-target-picker__list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.fn-weapon-picker__option,
+.fn-target-picker__option {
+  align-items: start;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.fn-weapon-picker__choice,
+.fn-target-picker__option {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fn-weapon-picker__description {
+  margin-left: 1.65rem;
+  max-width: min(34rem, calc(100vw - 5rem));
+}
+
+.fn-weapon-picker__description summary {
+  cursor: pointer;
+}
+
+.fn-weapon-picker__description p {
+  margin: 0.35rem 0 0;
+  max-height: 10rem;
+  overflow: auto;
+}
+
+[data-fn-drag-handle="true"] {
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}

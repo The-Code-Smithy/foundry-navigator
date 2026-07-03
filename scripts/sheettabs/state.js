@@ -6,6 +6,7 @@ export const FN_SHEET_TABS_STATE = {
     pendingConsumableApplication: null,
     lastAttackControl: null,
     lastAttackControlDescriptor: null,
+    lastCombatWeaponPromptKey: "",
 };
 
 export const FN_MODULE_ID = "foundry-navigator";

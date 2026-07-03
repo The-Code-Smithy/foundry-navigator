@@ -55,6 +55,7 @@ Implementation principle: preserve Foundry D&D 5e's native level-up and advancem
 - [ ] **Nearby token scan** - keybind announces tokens within a configurable radius of the controlled token, including distance, grid coordinate, and disposition filter (friendly, neutral, secret, hostile, or all). Useful for situational awareness even when combat targeting is handled from the sheet.
 - [ ] **Arrow key token movement** - move a controlled token one grid square at a time using arrow keys. Foundry has partial support; ensure it works and triggers our announcements.
 - [ ] **Keyboard ruler / distance check** - announce walking distance from the controlled token to the currently focused token (for example "Goblin Scout is 15 feet away, at B5.").
+- [ ] **Keyboard measured-template / region placement** - when a D&D 5e spell or activity creates a cone, line, circle, or similar area effect, provide an accessible keyboard placement mode instead of requiring mouse placement. Default origin to the caster, support rotation and origin adjustment with keys, announce affected hostile/neutral/friendly tokens before confirmation, then create the Foundry v13 measured template or Foundry v14 region/area document and optionally target affected tokens.
 
 ---
 

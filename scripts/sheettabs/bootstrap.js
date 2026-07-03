@@ -16,6 +16,8 @@ export function registerSheetTabBootstrap({
     openAttackResultDialog,
     handleRollDamageHook,
     registerFocusedItemUseIntercept,
+    promptCombatTurnWeaponSelection,
+    openActorSheetForCombatant,
 })
 {
     Hooks.on("init", () =>
@@ -63,6 +65,25 @@ export function registerSheetTabBootstrap({
 
         clearActiveActorSheet("closeApplicationV2");
         FN_SHEET_HINTS_ANNOUNCED.delete(app?.id);
+    });
+
+    Hooks.on("updateCombat", (combat, changed) =>
+    {
+        if (!("turn" in changed) && !("round" in changed)) return;
+
+        const combatant = combat.combatant;
+        if (!combatant?.isOwner) return;
+
+        const key = `${combat.id ?? ""}:${combat.round ?? ""}:${combat.turn ?? ""}:${combatant.id ?? ""}`;
+        if (FN_SHEET_TABS_STATE.lastCombatWeaponPromptKey === key) return;
+        FN_SHEET_TABS_STATE.lastCombatWeaponPromptKey = key;
+
+        setTimeout(async () =>
+        {
+            const result = await openActorSheetForCombatant?.(combatant);
+            if (!result?.app || !result?.actor) return;
+            await promptCombatTurnWeaponSelection?.(result.app, result.actor);
+        }, 250);
     });
 
     Hooks.on("dnd5e.postRollAttack", (rolls, data = {}) =>

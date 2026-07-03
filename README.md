@@ -11,7 +11,7 @@ The module is designed to reduce reliance on mouse-only controls, hover interact
 - Default D&D 5e actor sheets
 - Tidy 5e Sheets, including the modern layout
 
-## What's New in v0.16.0
+## What's New in v0.17.0
 
 - `Alt+1` through `Alt+9` read recent roll history, newest first
 - Attack and damage cards are combined into richer summaries when Foundry exposes target and damage details
@@ -60,6 +60,8 @@ Announcement features are configurable per player, so each user can enable the f
 - Tokens entering or leaving the current scene
 - Detailed HP, damage, healing, and temporary HP changes on owned actors, plus damage and healing for currently targeted visible tokens without exposing hidden totals
 - Condition and status effect changes on owned actors
+- Optional suppression of Foundry's minimum-resolution warning banner, disabled by default but available as a setting
+- Low-resolution accessibility mode that keeps windows in the viewport and scrolls focused controls into view below 1024x768
 - Improved labels and spoken hints in Foundry Navigator's Configure Settings controls
 
 ### Canvas Keyboard Actions
