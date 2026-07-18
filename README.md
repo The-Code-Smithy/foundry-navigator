@@ -11,11 +11,12 @@ The module is designed to reduce reliance on mouse-only controls, hover interact
 - Default D&D 5e actor sheets
 - Tidy 5e Sheets, including the modern layout
 
-## What's New in v0.17.0
+## What's New in v0.17.1
 
-- `Alt+1` through `Alt+9` read recent roll history, newest first
-- Attack and damage cards are combined into richer summaries when Foundry exposes target and damage details
-- `Alt+Shift+R` remains available as the configurable fallback for reading the latest roll
+- Added a one-time first-run setup dialog for players so they can quickly choose core Foundry Navigator options
+- Added a per-player toggle for the combat-turn weapon selector
+- Fixed selector behavior so the same per-player checkbox works consistently for both GM and PC users
+- Improved NPC and enemy turn handling so valid attack-capable actions appear in the selector instead of only opening the actor sheet
 
 ## Feature Overview
 

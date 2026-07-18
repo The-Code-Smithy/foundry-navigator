@@ -1,4 +1,5 @@
-import {
+import
+{
     FN_MODULE_ID,
     FN_MODULE_SOCKET,
     FN_SHEET_HINTS_ANNOUNCED,
@@ -20,6 +21,9 @@ export function registerSheetTabBootstrap({
     openActorSheetForCombatant,
 })
 {
+    const isNavigatorKeybindingsEnabled = () => game.settings.get(FN_MODULE_ID, "enableNavigatorKeybindings") !== false;
+    const isCombatTurnWeaponSelectorEnabled = () => game.settings.get(FN_MODULE_ID, "enableCombatTurnWeaponSelector") !== false;
+
     Hooks.on("init", () =>
     {
         game.keybindings.register(FN_MODULE_ID, "focusCharacterSheetTabs", {
@@ -28,6 +32,7 @@ export function registerSheetTabBootstrap({
             editable: [{ key: "KeyH", modifiers: ["Alt", "Shift"] }],
             onDown: () =>
             {
+                if (!isNavigatorKeybindingsEnabled()) return false;
                 focusActiveActorSheetTabFromHotkey(false);
                 return true;
             },
@@ -69,10 +74,17 @@ export function registerSheetTabBootstrap({
 
     Hooks.on("updateCombat", (combat, changed) =>
     {
+        if (!isCombatTurnWeaponSelectorEnabled()) return;
         if (!("turn" in changed) && !("round" in changed)) return;
 
         const combatant = combat.combatant;
-        if (!combatant?.isOwner) return;
+        const canControlCombatant =
+            game.user?.isGM
+            || combatant?.isOwner
+            || combatant?.actor?.isOwner
+            || combatant?.token?.isOwner
+            || combatant?.token?.actor?.isOwner;
+        if (!canControlCombatant) return;
 
         const key = `${combat.id ?? ""}:${combat.round ?? ""}:${combat.turn ?? ""}:${combatant.id ?? ""}`;
         if (FN_SHEET_TABS_STATE.lastCombatWeaponPromptKey === key) return;

@@ -15,6 +15,54 @@
 
 Hooks.on("init", () =>
 {
+    game.settings.register('foundry-navigator', 'enableCombatTunnel', {
+        name: 'Enable Combat Tunnel',
+        hint: 'Turns Foundry Navigator combat target, attack, and damage dialogs on or off for this client.',
+        scope: 'client',
+        config: true,
+        type: Boolean,
+        default: true,
+        onChange: () => { },
+    });
+
+    game.settings.register('foundry-navigator', 'enableNavigatorKeybindings', {
+        name: 'Enable Foundry Navigator Key Bindings',
+        hint: 'Turns Foundry Navigator keybinding actions on or off for this client.',
+        scope: 'client',
+        config: true,
+        type: Boolean,
+        default: true,
+        onChange: () => { },
+    });
+
+    game.settings.register('foundry-navigator', 'enableCombatTurnWeaponSelector', {
+        name: 'Enable Combat-Turn Weapon Selector',
+        hint: 'Shows or hides the start-of-turn weapon picker that appears for your owned combatants.',
+        scope: 'client',
+        config: true,
+        type: Boolean,
+        default: true,
+        onChange: () => { },
+    });
+
+    game.settings.register('foundry-navigator', 'firstRunSetupShown', {
+        name: 'First-Run Setup Dialog Shown',
+        hint: 'Internal flag used to prevent showing the first-run setup dialog more than once.',
+        scope: 'client',
+        config: false,
+        type: Boolean,
+        default: false,
+    });
+
+    game.settings.register('foundry-navigator', 'firstRunSetupVersion', {
+        name: 'First-Run Setup Dialog Version',
+        hint: 'Internal setup dialog version tracker.',
+        scope: 'client',
+        config: false,
+        type: Number,
+        default: 0,
+    });
+
 
     game.settings.register('foundry-navigator', 'announceChatMessages', {
         name: 'Announce Chat Messages',
@@ -127,6 +175,7 @@ Hooks.on("init", () =>
         editable: [{ key: 'KeyW', modifiers: ['Alt', 'Shift'] }],
         onDown: () =>
         {
+            if (!areNavigatorKeybindingsEnabled()) return false;
             const token = canvas?.tokens?.controlled?.[0];
             if (!token)
             {
@@ -151,6 +200,7 @@ Hooks.on("init", () =>
         editable: [{ key: 'KeyR', modifiers: ['Alt', 'Shift'] }],
         onDown: () =>
         {
+            if (!areNavigatorKeybindingsEnabled()) return false;
             return readRollHistoryEntry(0);
         },
     });
@@ -163,7 +213,11 @@ Hooks.on("init", () =>
                 ? 'Announces the most recent structured roll result from chat.'
                 : `Announces roll result ${index} from recent chat roll history.`,
             editable: [{ key: `Digit${index}`, modifiers: ['Alt'] }],
-            onDown: () => readRollHistoryEntry(index - 1),
+            onDown: () =>
+            {
+                if (!areNavigatorKeybindingsEnabled()) return false;
+                return readRollHistoryEntry(index - 1);
+            },
         });
     }
 
@@ -173,6 +227,7 @@ Hooks.on("init", () =>
         editable: [{ key: 'KeyA', modifiers: ['Alt', 'Shift'] }],
         onDown: () =>
         {
+            if (!areNavigatorKeybindingsEnabled()) return false;
             void openNavigatorSettings();
             return true;
         },
@@ -184,6 +239,7 @@ Hooks.on("init", () =>
         editable: [{ key: 'KeyK', modifiers: ['Alt', 'Shift'] }],
         onDown: () =>
         {
+            if (!areNavigatorKeybindingsEnabled()) return false;
             void openConfigureControls();
             return true;
         },
@@ -195,6 +251,7 @@ Hooks.on("init", () =>
         editable: [{ key: 'KeyP', modifiers: ['Alt', 'Shift'] }],
         onDown: () =>
         {
+            if (!areNavigatorKeybindingsEnabled()) return false;
             void toggleGamePause();
             return true;
         },
@@ -207,6 +264,7 @@ Hooks.on("init", () =>
         precedence: CONST.KEYBINDING_PRECEDENCE.PRIORITY,
         onDown: () =>
         {
+            if (!areNavigatorKeybindingsEnabled()) return false;
             void openPreferredCharacterSheet();
             return true;
         },
@@ -225,6 +283,7 @@ Hooks.on("ready", () =>
     });
     focusCanvasAfterReady();
     updateLowResolutionMode();
+    void maybeShowFirstRunSetupDialog();
 
     const handleKeybindingsControlsKeyEvent = (event) =>
     {
@@ -320,6 +379,119 @@ Hooks.on("ready", () =>
     document.addEventListener("focusin", handleLowResolutionFocusIn, true);
     window.addEventListener("resize", updateLowResolutionMode);
 });
+
+function areNavigatorKeybindingsEnabled()
+{
+    try
+    {
+        return game.settings.get('foundry-navigator', 'enableNavigatorKeybindings') !== false;
+    }
+    catch
+    {
+        return true;
+    }
+}
+
+async function maybeShowFirstRunSetupDialog()
+{
+    const setupDialogVersion = 2;
+    if (game.user?.isGM) return;
+
+    const shownVersion = Number(game.settings.get('foundry-navigator', 'firstRunSetupVersion')) || 0;
+    if (shownVersion >= setupDialogVersion) return;
+
+    const combatTunnelEnabled = game.settings.get('foundry-navigator', 'enableCombatTunnel') !== false;
+    const keybindingsEnabled = game.settings.get('foundry-navigator', 'enableNavigatorKeybindings') !== false;
+    const weaponSelectorEnabled = game.settings.get('foundry-navigator', 'enableCombatTurnWeaponSelector') !== false;
+
+    const DialogV2 = foundry?.applications?.api?.DialogV2;
+    if (!DialogV2?.wait)
+    {
+        await game.settings.set('foundry-navigator', 'firstRunSetupShown', true);
+        await game.settings.set('foundry-navigator', 'firstRunSetupVersion', setupDialogVersion);
+        return;
+    }
+
+    const content = `
+        <form class="standard-form" autocomplete="off">
+            <p>Welcome to Foundry Navigator.</p>
+            <p>This setup appears once. You can always change these options later in Configure Settings under Module Settings.</p>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="enableCombatTunnel"${combatTunnelEnabled ? ' checked' : ''}>
+                    Turn Combat Tunnel on
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="enableNavigatorKeybindings"${keybindingsEnabled ? ' checked' : ''}>
+                    Turn on Foundry Navigator key bindings
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="enableCombatTurnWeaponSelector"${weaponSelectorEnabled ? ' checked' : ''}>
+                    Turn on the combat-turn weapon selector
+                </label>
+            </div>
+        </form>
+    `;
+
+    const result = await DialogV2.wait({
+        window: { title: 'Foundry Navigator Setup' },
+        content,
+        modal: true,
+        rejectClose: false,
+        buttons: [
+            {
+                action: 'save',
+                label: 'Save',
+                default: true,
+                callback: (_event, _button, dialog) =>
+                {
+                    const root = dialog?.element instanceof HTMLElement
+                        ? dialog.element
+                        : dialog?.element?.[0] instanceof HTMLElement
+                            ? dialog.element[0]
+                            : null;
+                    const form = root?.querySelector('form');
+                    const combatTunnel = !!form?.querySelector('input[name="enableCombatTunnel"]')?.checked;
+                    const keybindings = !!form?.querySelector('input[name="enableNavigatorKeybindings"]')?.checked;
+                    const weaponSelector = !!form?.querySelector('input[name="enableCombatTurnWeaponSelector"]')?.checked;
+                    return {
+                        enableCombatTunnel: combatTunnel,
+                        enableNavigatorKeybindings: keybindings,
+                        enableCombatTurnWeaponSelector: weaponSelector,
+                    };
+                },
+            },
+            {
+                action: 'keep',
+                label: 'Keep Current',
+                callback: () => ({
+                    enableCombatTunnel: combatTunnelEnabled,
+                    enableNavigatorKeybindings: keybindingsEnabled,
+                    enableCombatTurnWeaponSelector: weaponSelectorEnabled,
+                }),
+            },
+        ],
+        close: () => ({
+            enableCombatTunnel: combatTunnelEnabled,
+            enableNavigatorKeybindings: keybindingsEnabled,
+            enableCombatTurnWeaponSelector: weaponSelectorEnabled,
+        }),
+    });
+
+    if (result && typeof result === 'object')
+    {
+        await game.settings.set('foundry-navigator', 'enableCombatTunnel', result.enableCombatTunnel !== false);
+        await game.settings.set('foundry-navigator', 'enableNavigatorKeybindings', result.enableNavigatorKeybindings !== false);
+        await game.settings.set('foundry-navigator', 'enableCombatTurnWeaponSelector', result.enableCombatTurnWeaponSelector !== false);
+    }
+
+    await game.settings.set('foundry-navigator', 'firstRunSetupShown', true);
+    await game.settings.set('foundry-navigator', 'firstRunSetupVersion', setupDialogVersion);
+}
 
 async function migrateLegacyDefaultKeybindings()
 {

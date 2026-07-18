@@ -1,3 +1,11 @@
+### v0.17.1
+
+- Added first-run per-player setup options for Combat Tunnel and Foundry Navigator key bindings, with the settings available afterward in Module Settings.
+- Added a client setting to enable or disable the combat-turn weapon selector.
+- Fixed combat-turn weapon selector behavior so one per-player checkbox controls it for both GMs and PCs.
+- Fixed GM turn-change handling so the selector can trigger correctly on GM clients when enabled.
+- Expanded combat-turn action detection for NPC and enemy actors so the selector appears with valid attack-capable actions instead of only opening the sheet.
+
 ### v0.17.0
 
 - Added structured roll history shortcuts: `Alt+1` reads the most recent roll event, through `Alt+9` for older roll results.

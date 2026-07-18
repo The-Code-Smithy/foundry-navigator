@@ -1,11 +1,13 @@
-import {
+import
+{
     clearUserTargets,
     getActivityTargetCandidates,
     setSingleUserTarget,
     waitForTargetRegistration,
 } from "./inventory-helpers.js";
 import { getInventoryActionContext } from "./inventory-activation.js";
-import {
+import
+{
     focusDialogControl,
     getApplicationIdentity,
     getVisibleApplicationElements,
@@ -13,7 +15,8 @@ import {
     showAccessibleTargetPicker,
     showAccessibleWeaponPicker,
 } from "./interaction-helpers.js";
-import {
+import
+{
     getInventoryRowElement,
     getInventoryRowName,
     isLikelyInventoryMenuTrigger,
@@ -49,6 +52,9 @@ export function createCombatActivationHandlers({
     setActiveActorSheet,
 })
 {
+    const isCombatTunnelEnabled = () => game.settings.get("foundry-navigator", "enableCombatTunnel") !== false;
+    const isCombatTurnWeaponSelectorEnabled = () => game.settings.get("foundry-navigator", "enableCombatTurnWeaponSelector") !== false;
+
     async function chooseAttackTarget(app, element)
     {
         const context = getInventoryActionContext(element, app);
@@ -170,14 +176,19 @@ export function createCombatActivationHandlers({
     {
         const activities = item?.system?.activities;
         if (!activities?.filter) return null;
-        return activities.filter(activity => activity?.type === "attack" && activity?.canUse)?.[0] ?? null;
+        return activities.filter(activity =>
+            activity?.type === "attack"
+            && (activity?.canUse || typeof activity?.rollAttack === "function")
+        )?.[0] ?? null;
     }
 
     function getItemUsableActivity(item)
     {
         const activities = item?.system?.activities;
         if (!activities?.filter) return null;
-        return activities.filter(activity => activity?.canUse)?.[0] ?? null;
+        return activities.filter(activity =>
+            activity?.canUse || typeof activity?.use === "function"
+        )?.[0] ?? null;
     }
 
     function isCombatTurnSpellChoice(item)
@@ -211,9 +222,22 @@ export function createCombatActivationHandlers({
 
     function getCombatTurnActionChoices(actor)
     {
+        const isNpcActor = actor?.type === "npc";
+
         return (actor?.items?.contents ?? [])
-            .filter(item => isCombatTurnWeaponChoice(item))
-            .filter(item => getItemAttackActivity(item)?.rollAttack || getItemUsableActivity(item)?.use)
+            .filter(item =>
+            {
+                const attackActivity = getItemAttackActivity(item);
+                const usableActivity = getItemUsableActivity(item);
+                const hasCombatAction = !!(attackActivity?.rollAttack || usableActivity?.use);
+                if (!hasCombatAction) return false;
+
+                // NPC/enemy sheets often expose attack-capable actions outside
+                // of equipped weapon rows, so include any attack-capable item.
+                if (isNpcActor) return item?.type === "weapon" || !!attackActivity?.rollAttack;
+
+                return isCombatTurnWeaponChoice(item);
+            })
             .sort((left, right) =>
             {
                 return (left.name ?? "").localeCompare(right.name ?? "");
@@ -317,6 +341,7 @@ export function createCombatActivationHandlers({
 
     async function promptCombatTurnWeaponSelection(app, actor)
     {
+        if (!isCombatTurnWeaponSelectorEnabled()) return false;
         const actions = getCombatTurnActionChoices(actor);
         if (!actions.length)
         {
@@ -583,6 +608,12 @@ export function createCombatActivationHandlers({
         if (!(element instanceof HTMLElement)) return;
         const context = getInventoryActionContext(element, app);
         const activationTarget = context?.activationTarget instanceof HTMLElement ? context.activationTarget : element;
+        if (!isCombatTunnelEnabled())
+        {
+            activationTarget.click();
+            return;
+        }
+
         FN_SHEET_TABS_STATE.lastAttackControl = activationTarget;
         FN_SHEET_TABS_STATE.lastAttackControlDescriptor = getAttackControlDescriptor(activationTarget);
         const attackActivity = context?.attackActivity ?? null;

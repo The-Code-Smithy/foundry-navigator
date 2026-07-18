@@ -6,6 +6,11 @@ function itemDocumentsMatch(left, right)
     return !!(left.id && right.id && left.id === right.id && left.actor?.id === right.actor?.id);
 }
 
+function isCombatTunnelEnabled()
+{
+    return game.settings.get("foundry-navigator", "enableCombatTunnel") !== false;
+}
+
 export function createFocusedItemUseIntercept({
     activateInventoryControl,
     debug,
@@ -88,6 +93,7 @@ export function createFocusedItemUseIntercept({
     async function interceptFocusedItemUse(item, args)
     {
         if (bypass) return false;
+        if (!isCombatTunnelEnabled()) return false;
 
         const interceptContext = getFocusedItemUseInterceptContext(item, { debugSkips: true });
         if (!interceptContext) return false;

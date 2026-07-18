@@ -2,7 +2,7 @@
   "id": "foundry-navigator",
   "title": "Foundry Navigator",
   "description": "<p>Keyboard-first and screen-reader-friendly navigation tools for Foundry VTT, currently focused on D&amp;D 5e support</p>",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "authors": [
     {
       "name": "DeathStar Jim",
@@ -28,9 +28,9 @@
       "src": "styles/main.css"
     }
   ],
-  "url": "https://github.com/deathstarjim/foundry-navigator",
-  "manifest": "https://github.com/deathstarjim/foundry-navigator/releases/latest/download/module.json",
-  "download": "https://github.com/deathstarjim/foundry-navigator/releases/download/0.17.0/module.zip",
+  "url": "https://github.com/The-Code-Smithy/foundry-navigator",
+  "manifest": "https://github.com/The-Code-Smithy/foundry-navigator/releases/latest/download/module.json",
+  "download": "https://github.com/The-Code-Smithy/foundry-navigator/releases/download/0.17.1/module.zip",
   "readme": "https://github.com/deathstarjim/foundry-navigator#readme",
   "changelog": "https://github.com/deathstarjim/foundry-navigator#changelog",
   "flags": {}

@@ -85,6 +85,8 @@ Implementation principle: preserve Foundry D&D 5e's native level-up and advancem
 ## Infrastructure / Quality of Life
 
 - [ ] **System-agnostic HP hook** - the HP announcement currently needs system-specific attribute paths. Investigate a generic approach that works across additional systems if support expands beyond D&D 5e.
+- [x] **First-run setup dialog** - first-time player onboarding dialog now appears once per client and lets the user quickly configure core module options, with follow-up changes available in Module Settings.
+- [x] **Combat-turn weapon selector toggle** - one per-client checkbox now controls whether the combat-turn weapon selector runs for that user, regardless of GM or PC role.
 - [ ] **Setting profile / preset** - a single "Enable all screen reader features" toggle that turns on all announcement settings at once, for easier onboarding.
 - [x] **Settings shortcut** - dedicated hotkey opens Configure Settings to the Foundry Navigator module and moves focus into the first setting control so settings can be changed without hunting through the full settings UI.
 - [ ] **Sidebar pin / default-open option** - add a client setting to keep the right sidebar expanded by default, with a pin-style option so it stays open until the player explicitly closes it.

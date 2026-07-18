@@ -97,6 +97,18 @@ function announceTargetChange(token, targeted)
     globalThis.FoundryNavigatorAnnounce?.polite?.(`${token.name ?? "Token"} ${action}.`);
 }
 
+function areNavigatorKeybindingsEnabled()
+{
+    try
+    {
+        return game.settings.get("foundry-navigator", "enableNavigatorKeybindings") !== false;
+    }
+    catch
+    {
+        return true;
+    }
+}
+
 Hooks.once("init", () =>
 {
     game.keybindings.register("foundry-navigator", "toggleKeyboardTokenTarget", {
@@ -105,6 +117,7 @@ Hooks.once("init", () =>
         editable: [{ key: "KeyT", modifiers: ["Alt", "Shift"] }],
         onDown: () =>
         {
+            if (!areNavigatorKeybindingsEnabled()) return false;
             const token = getKeyboardToken();
             if (!token)
             {
