@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Foundry Navigator</title>
 </head>
+
 <body>
   <h1>Foundry Navigator</h1>
 
   <p>
-    Foundry Navigator adds keyboard-first and screen-reader-friendly navigation tools to Foundry Virtual Tabletop. It is currently focused on <strong>D&amp;D 5e character sheets and gameplay workflows on Foundry VTT v13 and v14</strong>.
+    Foundry Navigator adds keyboard-first and screen-reader-friendly navigation tools to Foundry Virtual Tabletop. It is
+    currently focused on <strong>D&amp;D 5e character sheets and gameplay workflows on Foundry VTT v13 and v14</strong>.
   </p>
   <p>
-    The module is designed to reduce reliance on mouse-only controls, hover interactions, and visually locating controls during character-sheet navigation and combat.
+    The module is designed to reduce reliance on mouse-only controls, hover interactions, and visually locating controls
+    during character-sheet navigation and combat.
   </p>
 
   <h2>Current Scope</h2>
@@ -25,17 +29,20 @@
 
   <h2>What's New in v0.17.1</h2>
   <ul>
-    <li>Added a one-time first-run setup dialog for players so they can quickly choose core Foundry Navigator options</li>
+    <li>Added a one-time first-run setup dialog for players so they can quickly choose core Foundry Navigator options
+    </li>
     <li>Added a per-player toggle for the combat-turn weapon selector</li>
     <li>Fixed selector behavior so the same per-player checkbox works consistently for both GM and PC users</li>
-    <li>Improved NPC and enemy turn handling so valid attack-capable actions appear in the selector instead of only opening the actor sheet</li>
+    <li>Improved NPC and enemy turn handling so valid attack-capable actions appear in the selector instead of only
+      opening the actor sheet</li>
   </ul>
 
   <h2>Feature Overview</h2>
 
   <h3>Character Sheet Keyboard Navigation</h3>
   <ul>
-    <li><code>Alt+Shift+H</code> returns focus to the active sheet tab, including when focus is inside a sheet input</li>
+    <li><code>Alt+Shift+H</code> returns focus to the active sheet tab, including when focus is inside a sheet input
+    </li>
     <li><code>Tab</code> and <code>Shift+Tab</code> move between supported tab controls</li>
     <li><code>Enter</code> activates tabs and common sheet actions</li>
     <li>Keyboard users can move into the active panel and cycle through interactive controls predictably</li>
@@ -62,7 +69,8 @@
     <li>Hit or miss follow-up dialogs after attack rolls</li>
     <li>Direct damage and healing application without chasing chat card controls</li>
     <li>GM-mediated damage and healing application for players acting on unowned hostile tokens</li>
-    <li>Screen reader narration from target selection through attack confirmation, damage application, and focus recovery</li>
+    <li>Screen reader narration from target selection through attack confirmation, damage application, and focus
+      recovery</li>
   </ul>
 
   <h3>Screen Reader Announcements</h3>
@@ -76,10 +84,13 @@
     <li>UI notifications</li>
     <li>Token movement</li>
     <li>Tokens entering or leaving the current scene</li>
-    <li>Detailed HP, damage, healing, and temporary HP changes on owned actors, plus damage and healing for currently targeted visible tokens without exposing hidden totals</li>
+    <li>Detailed HP, damage, healing, and temporary HP changes on owned actors, plus damage and healing for currently
+      targeted visible tokens without exposing hidden totals</li>
     <li>Condition and status effect changes on owned actors</li>
-    <li>Optional suppression of Foundry's minimum-resolution warning banner, disabled by default but available as a setting</li>
-    <li>Low-resolution accessibility mode that keeps windows in the viewport and scrolls focused controls into view below 1024x768</li>
+    <li>Optional suppression of Foundry's minimum-resolution warning banner, disabled by default but available as a
+      setting</li>
+    <li>Low-resolution accessibility mode that keeps windows in the viewport and scrolls focused controls into view
+      below 1024x768</li>
     <li>Improved labels and spoken hints in Foundry Navigator's Configure Settings controls</li>
   </ul>
 
@@ -87,9 +98,11 @@
   <ul>
     <li><code>Enter</code> opens the actor sheet for the current keyboard token</li>
     <li><code>Shift+Enter</code> targets the current keyboard token</li>
-    <li><code>Alt+Shift+T</code> targets the hovered token as a screen-reader-friendly alternative to Foundry's native <code>T</code></li>
+    <li><code>Alt+Shift+T</code> targets the hovered token as a screen-reader-friendly alternative to Foundry's native
+      <code>T</code></li>
     <li><code>Alt+Shift+W</code> announces the controlled token's grid position, HP, and active conditions</li>
-    <li><code>Alt+C</code> opens the controlled token's actor sheet or the current player's assigned character sheet</li>
+    <li><code>Alt+C</code> opens the controlled token's actor sheet or the current player's assigned character sheet
+    </li>
   </ul>
 
   <h3>Helpful Keyboard Shortcuts</h3>
@@ -97,17 +110,21 @@
     <li><code>Alt+Shift+H</code>: return focus to the active sheet tab</li>
     <li><code>Alt+Shift+R</code>: re-read the latest roll result</li>
     <li><code>Alt+1</code> through <code>Alt+9</code>: read recent roll history, newest first</li>
-    <li><code>Alt+C</code>: open your current character sheet, with a module fallback when Foundry cannot resolve it</li>
+    <li><code>Alt+C</code>: open your current character sheet, with a module fallback when Foundry cannot resolve it
+    </li>
     <li><code>Alt+Shift+A</code>: open Foundry Navigator settings</li>
     <li><code>Alt+Shift+K</code>: open Configure Controls</li>
     <li><code>Alt+Shift+P</code>: pause or unpause the game as a GM-friendly alternative to Space</li>
     <li><code>Alt+Shift+W</code>: announce the controlled token's position, HP, and conditions</li>
     <li><code>Enter</code>: open the current keyboard token's actor sheet</li>
     <li><code>Shift+Enter</code>: target the current keyboard token</li>
-    <li><code>Alt+Shift+T</code>: target or untarget the hovered token without replacing Foundry's native <code>T</code></li>
+    <li><code>Alt+Shift+T</code>: target or untarget the hovered token without replacing Foundry's native <code>T</code>
+    </li>
   </ul>
   <p>
-    Module shortcuts can be changed through Foundry's Configure Controls screen. Known older defaults are migrated automatically, while user-created remappings are preserved. While Configure Controls is open, <code>Ctrl+S</code> saves the dialog and <code>Alt+Backspace</code> or <code>Alt+Escape</code> cancels a stuck binding capture.
+    Module shortcuts can be changed through Foundry's Configure Controls screen. Known older defaults are migrated
+    automatically, while user-created remappings are preserved. While Configure Controls is open, <code>Ctrl+S</code>
+    saves the dialog and <code>Alt+Backspace</code> or <code>Alt+Escape</code> cancels a stuck binding capture.
   </p>
 
   <h2>Installation</h2>
@@ -121,12 +138,15 @@
     <li>The most complete support is currently for D&amp;D 5e on Foundry v13 and v14</li>
     <li>Default D&amp;D 5e sheets and Tidy 5e are the primary supported sheet types</li>
     <li>Other systems and sheet implementations may work partially, but are not the focus of current development</li>
-    <li>Accessibility support is still evolving, and some Foundry or third-party module workflows may require further refinement</li>
+    <li>Accessibility support is still evolving, and some Foundry or third-party module workflows may require further
+      refinement</li>
   </ul>
 
   <h2>Acknowledgments</h2>
   <p>
-    Foundry Navigator was inspired in part by earlier Foundry accessibility work from Cora (silvative), including the Accessibility Enhancements module. Direct feedback from screen-reader and keyboard-only players continues to guide development.
+    Foundry Navigator was inspired in part by earlier Foundry accessibility work from Cora (silvative), including the
+    Accessibility Enhancements module. Direct feedback from screen-reader and keyboard-only players continues to guide
+    development.
   </p>
 
   <h2>Bugs and Enhancement Requests</h2>
@@ -145,7 +165,9 @@
 
   <h2>Contributing</h2>
   <p>
-    Code contributions and real table feedback are welcome, especially feedback from players using keyboard-only or screen-reader-driven workflows.
+    Code contributions and real table feedback are welcome, especially feedback from players using keyboard-only or
+    screen-reader-driven workflows.
   </p>
 </body>
+
 </html>
