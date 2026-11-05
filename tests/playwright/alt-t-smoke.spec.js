@@ -970,19 +970,19 @@ async function joinAsGamemaster(page)
     await waitForGameReady(page);
 }
 
-async function setGoblinHp(gmPage, hp)
+async function setTokenHp(page, name, value, max)
 {
-    await gmPage.evaluate(async value =>
+    await page.evaluate(async ({ name, value, max }) =>
     {
-        const token = canvas.tokens.placeables.find(candidate => candidate.name === "Test Goblin");
-        await token.actor.update({ "system.attributes.hp.max": value, "system.attributes.hp.value": value });
-    }, hp);
+        const token = canvas.tokens.placeables.find(candidate => candidate.name === name);
+        await token.actor.update({ "system.attributes.hp.max": max, "system.attributes.hp.value": value });
+    }, { name, value, max });
 }
 
-async function getGoblinHp(page)
+async function getTokenHp(page, name)
 {
-    return page.evaluate(() =>
-        canvas.tokens.placeables.find(candidate => candidate.name === "Test Goblin").actor.system.attributes.hp.value);
+    return page.evaluate(tokenName =>
+        canvas.tokens.placeables.find(candidate => candidate.name === tokenName).actor.system.attributes.hp.value, name);
 }
 
 // Attacks Test Goblin from the Tidy sheet with the keyboard, through to the damage roll.
@@ -1020,13 +1020,13 @@ async function attackGoblinFromSheet(page)
     return useButton;
 }
 
-async function getLastDamageTotal(page)
+async function getLastRollTotal(page, messageType)
 {
-    return page.evaluate(() =>
+    return page.evaluate(type =>
     {
-        const message = game.messages.contents.findLast(candidate => candidate.type === "damage");
+        const message = game.messages.contents.findLast(candidate => candidate.type === type);
         return message?.rolls?.reduce((total, roll) => total + roll.total, 0) ?? null;
-    });
+    }, messageType);
 }
 
 test("a full keyboard attack damages an unowned token through the connected GM", async ({ page, browser }) =>
@@ -1038,21 +1038,21 @@ test("a full keyboard attack damages an unowned token through the connected GM",
     try
     {
         await joinAsGamemaster(gmPage);
-        await setGoblinHp(gmPage, startingHp);
+        await setTokenHp(gmPage, "Test Goblin", startingHp, startingHp);
         await joinAsTester(page);
 
         const useButton = await attackGoblinFromSheet(page);
 
-        await expect.poll(() => getGoblinHp(gmPage), { timeout: 15000 }).toBeLessThan(startingHp);
+        await expect.poll(() => getTokenHp(gmPage, "Test Goblin"), { timeout: 15000 }).toBeLessThan(startingHp);
 
-        const damage = await getLastDamageTotal(page);
+        const damage = await getLastRollTotal(page, "damage");
         expect(damage).toBeGreaterThan(0);
-        expect(await getGoblinHp(gmPage)).toBe(startingHp - damage);
+        expect(await getTokenHp(gmPage, "Test Goblin")).toBe(startingHp - damage);
         await expect(useButton).toBeFocused({ timeout: 25000 });
     }
     finally
     {
-        await setGoblinHp(gmPage, 7).catch(() => undefined);
+        await setTokenHp(gmPage, "Test Goblin", 7, 7).catch(() => undefined);
         await gmContext.close();
     }
 });
@@ -1063,7 +1063,7 @@ test("a hit with no GM connected tells the player damage was not applied", async
 
     await joinAsTester(page);
     await recordAnnouncements(page);
-    const startingHp = await getGoblinHp(page);
+    const startingHp = await getTokenHp(page, "Test Goblin");
 
     const useButton = await attackGoblinFromSheet(page);
 
@@ -1071,5 +1071,79 @@ test("a hit with no GM connected tells the player damage was not applied", async
         .toContainEqual({ level: "assertive", text: message });
     await expect(page.locator("#notifications").getByText(message)).toBeVisible();
     await expect(useButton).toBeFocused({ timeout: 25000 });
-    expect(await getGoblinHp(page)).toBe(startingHp);
+    expect(await getTokenHp(page, "Test Goblin")).toBe(startingHp);
+});
+
+// Uses a Potion of Healing on the named token with the keyboard, through to the healing roll.
+async function usePotionOn(page, targetName)
+{
+    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
+    const inventoryTab = sheet.getByRole("tab", { name: /^Inventory$/i });
+    await inventoryTab.click();
+    await expect(inventoryTab).toHaveAttribute("aria-selected", /true/i);
+
+    const useButton = sheet.locator(".tidy-table-row-container").filter({ hasText: "Potion of Healing" })
+        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
+    await useButton.focus();
+    await expect(useButton).toBeFocused();
+
+    await page.keyboard.down("Enter");
+    const targetPicker = await expectTargetPickerReady(page);
+    await page.keyboard.up("Enter");
+    await targetPicker.locator(`input[name="fn-target-choice"][aria-label^="${targetName}."]`).check();
+    await targetPicker.locator('button[type="submit"], .dialog-buttons button').last().click();
+
+    const useAbilityButton = page.locator(".application.activity-usage").getByRole("button", { name: "Use Ability" });
+    await expect(useAbilityButton).toBeFocused({ timeout: 25000 });
+    await page.keyboard.press("Enter");
+
+    const rollButton = page.locator(".application.roll-configuration").getByRole("button", { name: "Roll" });
+    await expect(rollButton).toBeFocused({ timeout: 25000 });
+    await page.keyboard.press("Enter");
+
+    return useButton;
+}
+
+const getPotionQuantity = page => page.evaluate(() => game.user.character.items.getName("Potion of Healing").system.quantity);
+
+test("a potion heals the player's own token", async ({ page }) =>
+{
+    await joinAsTester(page);
+    await setTokenHp(page, TEST_ACTOR_NAME, 5, 20);
+    const startingPotions = await getPotionQuantity(page);
+
+    const useButton = await usePotionOn(page, TEST_ACTOR_NAME);
+
+    await expect.poll(() => getTokenHp(page, TEST_ACTOR_NAME), { timeout: 15000 }).toBeGreaterThan(5);
+    const healing = await getLastRollTotal(page, "healing");
+    expect(healing).toBeGreaterThan(0);
+    expect(await getTokenHp(page, TEST_ACTOR_NAME)).toBe(5 + healing);
+    expect(await getPotionQuantity(page)).toBe(startingPotions - 1);
+    await expect(useButton).toBeFocused({ timeout: 25000 });
+});
+
+test("a potion heals a downed ally through the connected GM", async ({ page, browser }) =>
+{
+    const gmContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+    const gmPage = await gmContext.newPage();
+    const allyName = "Test Downed Ally";
+
+    try
+    {
+        await joinAsGamemaster(gmPage);
+        await setTokenHp(gmPage, allyName, 0, 50);
+        await joinAsTester(page);
+
+        const useButton = await usePotionOn(page, allyName);
+
+        await expect.poll(() => getTokenHp(gmPage, allyName), { timeout: 15000 }).toBeGreaterThan(0);
+        const healing = await getLastRollTotal(page, "healing");
+        expect(await getTokenHp(gmPage, allyName)).toBe(healing);
+        await expect(useButton).toBeFocused({ timeout: 25000 });
+    }
+    finally
+    {
+        await setTokenHp(gmPage, allyName, 0, 7).catch(() => undefined);
+        await gmContext.close();
+    }
 });

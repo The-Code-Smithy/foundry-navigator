@@ -6,18 +6,20 @@ Last updated: 2026-11-05. This is a handoff file so work can resume after a fold
 
 - v0.17.2 is the current release. Attack target lists show only living enemies, confirmed on real tokens.
 - Test work is on the `test-world-seed` branch, pushed to GitHub but not merged to `main`. Run `git status` and `git log` for what's committed.
-- The full suite passes 24 of 24 on Foundry 14.370 with dnd5e 6.0.6 and Tidy 5e 14.4.1. The 20 tests that existed at the time also passed on 14.369.
+- The full suite passes 26 of 26 on Foundry 14.370 with dnd5e 6.0.6 and Tidy 5e 14.4.1. The 20 tests that existed at the time also passed on 14.369.
 
 ## Current focus
 
 Module fixes. The Tidy 5e console errors seen during test runs came from the `setCharacterSheetClass` test helper, not the module, and are fixed. The GM damage path and a full attack on real tokens are now tested.
 
-Unreleased fix: when damage or healing can't be applied, for example with no GM connected, the player now gets a warning and a screen reader announcement instead of silence. This needs a `CHANGELOG.md` entry and version bump in the next release. The main install's copy doesn't have it yet.
+Unreleased fixes are listed under Unreleased in `CHANGELOG.md`. They need a version number at release, and the main install's copy doesn't have them yet.
 
 ## Known gaps
 
 - The "No living enemies to target." announcement is tested on both attack paths, but it is polite and the roll dialog's assertive narration follows right after it. Check with a real screen reader that it is actually heard.
-- `roll-application.js` reads `flags.dnd5e.roll.type`, which dnd5e 6 doesn't set. Healing is still detected through the activity type, but healing through a real consumable hasn't been tested.
+- `roll-application.js` reads `flags.dnd5e.roll.type`, which dnd5e 6 doesn't set. Healing is detected through the activity type instead, and a real potion is now tested.
+- If a player picks a potion target, then cancels the Use Ability dialog, that target stays staged. Using the same potion later without the picker, such as with the mouse, could heal the old target. Not tested or fixed.
+- Healing spells have not been tested through the target picker.
 - Automated tests can't show how a real screen reader sounds. The user plans a manual walkthrough before updating their remote Foundry games.
 - Open design question: with no valid targets, the attack still continues to the roll dialog. Keep that, or stop at the announcement?
 
@@ -52,7 +54,7 @@ The world's contents come from `tests/seed/seed-world.js`, so only an empty worl
 
 ## Foundry 14.370
 
-- A side-by-side Node.js install is at `C:\foundry\14.370`, with data in `C:\foundry\data-14.370`, on port 30001 with UPnP off.
+- A side-by-side Node.js install is at `C:\foundry\14370`, with data in `C:\foundry\data-14.370`, on port 30001 with UPnP off.
 - Start it from that folder with `node main.js --dataPath=C:\foundry\data-14.370 --port=30001`. Restart it after adding systems, modules, or worlds on disk.
 - The suite passed there, so the module needs no changes for 14.370.
 - System Node was updated to 24.22.2, and the suite passes on 14.370 with it. Stay on the 24.x line: the newest Node LTS is 26, and Foundry v14 is documented for Node 24.

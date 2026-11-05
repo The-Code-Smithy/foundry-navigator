@@ -410,6 +410,8 @@ export function createCombatActivationHandlers({
     function promoteConsumableTargetToRollApplication(activity)
     {
         const pendingConsumable = FN_SHEET_TABS_STATE.pendingConsumableApplication;
+        if (!pendingConsumable) return false;
+
         const pendingActivity = pendingConsumable?.activity;
         const sameActivity = !pendingActivity || activitiesReferToSameThing(pendingActivity, activity);
 
@@ -698,6 +700,7 @@ export function createCombatActivationHandlers({
         activateInventoryControl,
         activateWeaponItem,
         openAttackResultDialog,
+        promoteConsumableTargetToRollApplication,
         promptCombatTurnWeaponSelection,
         restoreLastAttackControlFocus,
     };

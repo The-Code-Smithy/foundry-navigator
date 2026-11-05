@@ -223,6 +223,7 @@ const {
     activateInventoryControl,
     activateWeaponItem,
     openAttackResultDialog,
+    promoteConsumableTargetToRollApplication,
     promptCombatTurnWeaponSelection,
     restoreLastAttackControlFocus,
 } = createCombatActivationHandlers({
@@ -738,6 +739,7 @@ registerSheetTabBootstrap({
     getRollTotalValue,
     getTargetArmorClass,
     openAttackResultDialog,
+    promoteConsumableTargetToRollApplication,
     handleRollDamageHook,
     registerFocusedItemUseIntercept,
     promptCombatTurnWeaponSelection,

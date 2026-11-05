@@ -15,6 +15,7 @@ export function registerSheetTabBootstrap({
     getRollTotalValue,
     getTargetArmorClass,
     openAttackResultDialog,
+    promoteConsumableTargetToRollApplication,
     handleRollDamageHook,
     registerFocusedItemUseIntercept,
     promptCombatTurnWeaponSelection,
@@ -127,6 +128,14 @@ export function registerSheetTabBootstrap({
         FN_SHEET_TABS_STATE.pendingAttack = null;
     });
 
-    Hooks.on("dnd5e.rollDamage", (rolls, data = {}) => void handleRollDamageHook(rolls, data, "dnd5e.rollDamage"));
-    Hooks.on("dnd5e.rollDamageV2", (rolls, data = {}) => void handleRollDamageHook(rolls, data, "dnd5e.rollDamageV2"));
+    function onRollDamage(rolls, data, hookName)
+    {
+        // Healing only: other consumable damage may depend on a saving throw,
+        // so it must not be applied automatically.
+        if (data.subject?.type === "heal") promoteConsumableTargetToRollApplication(data.subject);
+        void handleRollDamageHook(rolls, data, hookName);
+    }
+
+    Hooks.on("dnd5e.rollDamage", (rolls, data = {}) => onRollDamage(rolls, data, "dnd5e.rollDamage"));
+    Hooks.on("dnd5e.rollDamageV2", (rolls, data = {}) => onRollDamage(rolls, data, "dnd5e.rollDamageV2"));
 }

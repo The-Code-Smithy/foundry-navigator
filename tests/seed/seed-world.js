@@ -88,13 +88,16 @@ async function seedWorld({ testWorldId })
         return item;
     }));
 
+    const potion = await findCompendiumItem("Potion of Healing");
+    potion.system.quantity = 5;
+
     const character = await Actor.create({
         name: testerName,
         type: "character",
         ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE, [tester.id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
         system: { attributes: { hp: { value: 20, max: 20 } } },
         prototypeToken: { actorLink: true, disposition: CONST.TOKEN_DISPOSITIONS.FRIENDLY },
-        items: weapons,
+        items: [...weapons, potion],
     });
     await tester.update({ character: character.id });
 
