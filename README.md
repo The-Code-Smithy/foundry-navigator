@@ -11,12 +11,11 @@ The module is designed to reduce reliance on mouse-only controls, hover interact
 - Default D&D 5e actor sheets
 - Tidy 5e Sheets, including the modern layout
 
-## What's New in v0.17.2
+## What's New in v0.18.0
 
-- Attack target lists now show only living enemies, on both the sheet and combat-turn selector paths, instead of every token on the scene.
-- Consumable and spell target lists no longer show dead enemies, while allies at 0 HP stay listed so they can still be healed.
-- Enemies are now recognized when the attacker has no token on the scene or a neutral one.
-- The screen reader now announces "No living enemies to target." when an attack has no valid targets.
+- Potions and other healing consumables now heal the target chosen in the target picker. Previously the choice was dropped: the potion was used and the healing rolled, but nobody was healed.
+- Focus now returns to the item after a healing consumable is used, instead of being lost.
+- Players now get a warning and a screen reader announcement when damage or healing can't be applied, such as when no GM is connected. Previously the failure was silent.
 
 ## Feature Overview
 

@@ -1,4 +1,4 @@
-### Unreleased
+### v0.18.0
 
 - Potions and other healing consumables now heal the target chosen in the target picker. Previously the choice was dropped: the potion was used and the healing rolled, but nobody was healed.
 - Focus now returns to the item after a healing consumable is used, instead of being lost.
