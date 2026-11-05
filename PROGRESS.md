@@ -26,7 +26,7 @@ The v0.18.0 fixes are listed in `CHANGELOG.md`. The main install's copy doesn't 
 ## Decisions
 
 - Compatibility is needed only within v14. v13 support is not needed.
-- `module.json` still says `minimum: "13"` and the `package.json` description still says "v13 and v14". Change these in the next release, and check the READMEs too.
+- v0.18.0 sets `minimum: "14"`. Older releases remain available for v13 users. Revisit only if there is real demand.
 
 ## Running the tests
 

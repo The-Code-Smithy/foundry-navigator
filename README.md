@@ -1,18 +1,19 @@
 # Foundry Navigator
 
-Foundry Navigator adds keyboard-first and screen-reader-friendly navigation tools to Foundry Virtual Tabletop. It is currently focused on **D&D 5e character sheets and gameplay workflows on Foundry VTT v13 and v14**.
+Foundry Navigator adds keyboard-first and screen-reader-friendly navigation tools to Foundry Virtual Tabletop. It is currently focused on **D&D 5e character sheets and gameplay workflows on Foundry VTT v14**.
 
 The module is designed to reduce reliance on mouse-only controls, hover interactions, and visually locating controls during character-sheet navigation and combat.
 
 ## Current Scope
 
-- Foundry VTT v13 and v14
+- Foundry VTT v14
 - D&D 5e system
 - Default D&D 5e actor sheets
 - Tidy 5e Sheets, including the modern layout
 
 ## What's New in v0.18.0
 
+- Foundry Navigator now requires Foundry VTT v14. Foundry v13 users can keep using v0.17.2 or earlier.
 - Potions and other healing consumables now heal the target chosen in the target picker. Previously the choice was dropped: the potion was used and the healing rolled, but nobody was healed.
 - Focus now returns to the item after a healing consumable is used, instead of being lost.
 - Players now get a warning and a screen reader announcement when damage or healing can't be applied, such as when no GM is connected. Previously the failure was silent.
@@ -98,7 +99,7 @@ If you are testing development builds manually, make sure the manifest and downl
 
 ## Limitations
 
-- The most complete support is currently for D&D 5e on Foundry v13 and v14.
+- The most complete support is currently for D&D 5e on Foundry v14.
 - Default D&D 5e sheets and Tidy 5e are the primary supported sheet types.
 - Other systems and sheet implementations may work partially, but are not the focus of current development.
 - Accessibility support is still evolving, and some Foundry or third-party module workflows may require further refinement.
