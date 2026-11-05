@@ -1,6 +1,6 @@
 // Local-only smoke-test config for Foundry.
 // Assumptions:
-// - Foundry is already running at http://localhost:30000
+// - Foundry is already running at FOUNDRY_URL (default http://localhost:30000)
 // - A world is already up and reachable
 // - The player "Tester The Brave" can join without a password
 const { defineConfig } = require("@playwright/test");
@@ -13,7 +13,7 @@ module.exports = defineConfig({
         timeout: 10_000,
     },
     use: {
-        baseURL: "http://localhost:30000",
+        baseURL: process.env.FOUNDRY_URL ?? "http://localhost:30000",
         headless: false,
         viewport: {
             width: 1024,
