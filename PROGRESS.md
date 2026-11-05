@@ -11,13 +11,10 @@ Last updated: 2026-11-05. This is a handoff file so work can resume after a fold
 
 ## Current focus
 
-Module fixes. Suggested first step: trace the Tidy 5e console errors below.
+Module fixes. The Tidy 5e console errors seen during test runs came from the `setCharacterSheetClass` test helper, not the module, and are fixed. Suggested next step: close the test gaps below.
 
 ## Known gaps
 
-- Two Tidy 5e console errors appear during test runs without failing a test, and have not been traced:
-  - `Failed to render svelte tab TypeError: $$props.sheetDocument.sheet._browseAddDocumentItemTypes is not a function`
-  - `An error occurred while submitting changes TypeError: Cannot read properties of undefined (reading 'hasAttribute')`
 - The combat test may not reach the path where a connected GM applies damage to a token the player doesn't own.
 - No test triggers the "No living enemies to target." announcement on a real scene.
 - Only the target list is checked against real tokens, not a complete attack.

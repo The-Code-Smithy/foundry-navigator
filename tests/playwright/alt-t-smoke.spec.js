@@ -433,8 +433,9 @@ async function setCharacterSheetClass(page, actorName, sheetClass)
             ?? game.actors?.find(candidate => candidate?.type === "character" && candidate?.isOwner);
         if (!actor?.id) return null;
 
+        // Close the open sheet first: the flag swaps actor.sheet to a new, unrendered instance.
+        if (actor.sheet?.rendered) await actor.sheet.close();
         await actor.setFlag("core", "sheetClass", desiredSheetClass);
-        actor.sheet?.close?.();
         actor.sheet?.render?.(true);
         return actor.id;
     }, { name: actorName, desiredSheetClass: sheetClass });
