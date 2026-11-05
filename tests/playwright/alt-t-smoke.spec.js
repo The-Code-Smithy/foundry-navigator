@@ -5,6 +5,10 @@ const TEST_ACTOR_NAME = "Tester The Brave";
 
 test.beforeEach(async ({ page }) =>
 {
+    // Each test gets a fresh browser profile, which would otherwise open the
+    // first-run setup dialog on top of the sheet.
+    await page.addInitScript(() => localStorage.setItem("foundry-navigator.firstRunSetupVersion", "999"));
+
     page.on("console", message =>
     {
         // Keep this simple and visible in the terminal for local smoke-test debugging.
@@ -60,7 +64,7 @@ async function joinAsTester(page)
 
         await expect(joinForm).toBeVisible({ timeout: 15000 });
 
-        const userSelect = joinForm.locator('select[name="userid"]');
+        const userSelect = joinForm.locator('select[name="userid" i]');
         await expect(userSelect).toBeVisible();
 
         const userId = await userSelect.evaluate((select, { userName, actorName }) =>
@@ -851,10 +855,28 @@ test("combat tunnel keeps focus anchored through targeting and damage flow", asy
     }, null, { timeout: 25000 });
 });
 
+test("target lists on the seeded scene match the real tokens", async ({ page }) =>
+{
+    await joinAsTester(page);
 
+    const result = await page.evaluate(async () =>
+    {
+        const { getActivityTargetCandidates } = await import("/modules/foundry-navigator/scripts/sheettabs/inventory-helpers.js");
+        const app = { document: game.user.character };
+        const names = candidates => candidates.map(candidate => candidate.token.name).sort();
 
+        return {
+            attack: names(getActivityTargetCandidates(app, { enemiesOnly: true })),
+            consumable: names(getActivityTargetCandidates(app, { preferSelf: true })),
+        };
+    });
 
-
-
-
-
+    expect(result.attack).toEqual(["Test Goblin"]);
+    expect(result.consumable).toEqual([
+        "Test Ally",
+        "Test Commoner",
+        "Test Downed Ally",
+        "Test Goblin",
+        "Tester The Brave",
+    ]);
+});

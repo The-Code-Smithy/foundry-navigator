@@ -1,5 +1,16 @@
 const { test, expect } = require("@playwright/test");
 
+// Foundry locks globals such as canvas once a world is active, so tests that
+// fake them run on an empty page served from the same origin.
+async function gotoBlankPage(page)
+{
+    await page.route("**/fn-test-blank", route => route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><title>Foundry Navigator test page</title>",
+    }));
+    await page.goto("/fn-test-blank");
+}
+
 test("roll application helpers read Foundry roll totals defensively", async ({ page }) =>
 {
     await page.goto("/join");
@@ -27,7 +38,7 @@ test("roll application helpers read Foundry roll totals defensively", async ({ p
 
 test("focused item-use intercept only captures the matching focused attack item", async ({ page }) =>
 {
-    await page.goto("/join");
+    await gotoBlankPage(page);
 
     const result = await page.evaluate(async () =>
     {
@@ -61,6 +72,7 @@ test("focused item-use intercept only captures the matching focused attack item"
 
         try
         {
+            globalThis.game = { settings: { get: () => true } };
             globalThis.CONFIG = { Item: { documentClass: FakeItem } };
             globalThis.libWrapper = null;
 
@@ -113,7 +125,7 @@ test("focused item-use intercept only captures the matching focused attack item"
 
 test("target candidates exclude non-enemies from attacks and defeated enemies everywhere", async ({ page }) =>
 {
-    await page.goto("/join");
+    await gotoBlankPage(page);
 
     const result = await page.evaluate(async () =>
     {
