@@ -110,3 +110,89 @@ test("focused item-use intercept only captures the matching focused attack item"
     expect(result.registered).toBe(true);
     expect(result.mismatchLogged).toBe(true);
 });
+
+test("target candidates exclude non-enemies from attacks and defeated enemies everywhere", async ({ page }) =>
+{
+    await page.goto("/join");
+
+    const result = await page.evaluate(async () =>
+    {
+        const { getActivityTargetCandidates } = await import("/modules/foundry-navigator/scripts/sheettabs/inventory-helpers.js");
+
+        const previousCanvas = globalThis.canvas;
+        const previousConfig = globalThis.CONFIG;
+        const previousConst = globalThis.CONST;
+
+        const FRIENDLY = 1;
+        const NEUTRAL = 0;
+        const HOSTILE = -1;
+
+        const makeToken = (name, disposition, { hp = { value: 10, max: 10 }, statuses = [], combatantDefeated = false, hidden = false, type = "npc" } = {}) => ({
+            id: name,
+            name,
+            center: { x: 0, y: 0 },
+            document: { disposition, hidden, combatant: { isDefeated: combatantDefeated } },
+            actor: { id: name, type, statuses: new Set(statuses), system: { attributes: { hp } } },
+        });
+
+        const hero = makeToken("Hero", FRIENDLY, { type: "character" });
+        const app = { document: { documentName: "Actor", id: "Hero" } };
+        const names = candidates => candidates.map(candidate => candidate.token.name).sort();
+        const setScene = (placeables, controlled) =>
+        {
+            globalThis.canvas = { tokens: { placeables, controlled }, grid: { size: 100 }, scene: { grid: { distance: 5 } } };
+        };
+
+        try
+        {
+            globalThis.CONFIG = { specialStatusEffects: { DEFEATED: "dead" } };
+            globalThis.CONST = { TOKEN_DISPOSITIONS: { FRIENDLY, NEUTRAL, HOSTILE } };
+
+            setScene([
+                hero,
+                makeToken("Downed Ally", FRIENDLY, { hp: { value: 0, max: 20 } }),
+                makeToken("Shopkeeper", NEUTRAL),
+                makeToken("Goblin", HOSTILE),
+                makeToken("Zero HP Goblin", HOSTILE, { hp: { value: 0, max: 7 } }),
+                makeToken("Status Dead Goblin", HOSTILE, { statuses: ["dead"] }),
+                makeToken("Combat Defeated Goblin", HOSTILE, { combatantDefeated: true }),
+                makeToken("No HP Tracking Construct", HOSTILE, { hp: { value: 0, max: 0 } }),
+                makeToken("Hidden Goblin", HOSTILE, { hidden: true }),
+            ], [hero]);
+
+            const attack = names(getActivityTargetCandidates(app, { enemiesOnly: true }));
+            const consumable = names(getActivityTargetCandidates(app, { preferSelf: true }));
+
+            // No token for the attacking actor on this scene.
+            setScene([makeToken("Goblin", HOSTILE), makeToken("Ally", FRIENDLY)], []);
+            const attackWithoutSource = getActivityTargetCandidates(app, { enemiesOnly: true })
+                .map(candidate => [candidate.token.name, candidate.disposition]);
+
+            setScene([hero, makeToken("Zero HP Goblin", HOSTILE, { hp: { value: 0, max: 7 } })], [hero]);
+            const attackAllDead = names(getActivityTargetCandidates(app, { enemiesOnly: true }));
+
+            // A GM attacking from an NPC: downed PCs are dying, not dead.
+            const ogre = makeToken("Ogre", HOSTILE);
+            setScene([
+                ogre,
+                makeToken("Downed PC", FRIENDLY, { hp: { value: 0, max: 20 }, type: "character" }),
+                makeToken("Dead PC", FRIENDLY, { hp: { value: 0, max: 20 }, statuses: ["dead"], type: "character" }),
+            ], [ogre]);
+            const npcAttack = names(getActivityTargetCandidates({ document: { documentName: "Actor", id: "Ogre" } }, { enemiesOnly: true }));
+
+            return { attack, consumable, attackWithoutSource, attackAllDead, npcAttack };
+        }
+        finally
+        {
+            globalThis.canvas = previousCanvas;
+            globalThis.CONFIG = previousConfig;
+            globalThis.CONST = previousConst;
+        }
+    });
+
+    expect(result.attack).toEqual(["Goblin", "No HP Tracking Construct"]);
+    expect(result.consumable).toEqual(["Downed Ally", "Goblin", "Hero", "No HP Tracking Construct", "Shopkeeper"]);
+    expect(result.attackWithoutSource).toEqual([["Goblin", "enemy"]]);
+    expect(result.attackAllDead).toEqual([]);
+    expect(result.npcAttack).toEqual(["Downed PC"]);
+});

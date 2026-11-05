@@ -11,12 +11,12 @@ The module is designed to reduce reliance on mouse-only controls, hover interact
 - Default D&D 5e actor sheets
 - Tidy 5e Sheets, including the modern layout
 
-## What's New in v0.17.1
+## What's New in v0.17.2
 
-- Added a one-time first-run setup dialog for players so they can quickly choose core Foundry Navigator options
-- Added a per-player toggle for the combat-turn weapon selector
-- Fixed selector behavior so the same per-player checkbox works consistently for both GM and PC users
-- Improved NPC and enemy turn handling so valid attack-capable actions appear in the selector instead of only opening the actor sheet
+- Attack target lists now show only living enemies, on both the sheet and combat-turn selector paths, instead of every token on the scene.
+- Consumable and spell target lists no longer show dead enemies, while allies at 0 HP stay listed so they can still be healed.
+- Enemies are now recognized when the attacker has no token on the scene or a neutral one.
+- The screen reader now announces "No living enemies to target." when an attack has no valid targets.
 
 ## Feature Overview
 

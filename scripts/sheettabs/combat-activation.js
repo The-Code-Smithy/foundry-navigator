@@ -55,11 +55,17 @@ export function createCombatActivationHandlers({
     const isCombatTunnelEnabled = () => game.settings.get("foundry-navigator", "enableCombatTunnel") !== false;
     const isCombatTurnWeaponSelectorEnabled = () => game.settings.get("foundry-navigator", "enableCombatTurnWeaponSelector") !== false;
 
+    function announceNoEnemyTargets()
+    {
+        // Polite so the roll dialog's assertive narration doesn't cut this off.
+        globalThis.FoundryNavigatorAnnounce?.polite?.("No living enemies to target.");
+    }
+
     async function chooseAttackTarget(app, element)
     {
         const context = getInventoryActionContext(element, app);
         const itemName = context?.itemName ?? getInventoryRowName(getInventoryRowElement(element));
-        const candidates = getActivityTargetCandidates(app);
+        const candidates = getActivityTargetCandidates(app, { enemiesOnly: true });
 
         if (!candidates.length)
         {
@@ -67,6 +73,7 @@ export function createCombatActivationHandlers({
                 appId: app?.id,
                 itemName,
             });
+            announceNoEnemyTargets();
             return true;
         }
 
@@ -265,8 +272,12 @@ export function createCombatActivationHandlers({
         const itemName = item?.name ?? "";
         if (attackActivity?.rollAttack)
         {
-            const candidates = getActivityTargetCandidates(app);
-            if (candidates.length)
+            const candidates = getActivityTargetCandidates(app, { enemiesOnly: true });
+            if (!candidates.length)
+            {
+                announceNoEnemyTargets();
+            }
+            else
             {
                 const selectedToken = await showAccessibleTargetPicker({ app, itemName, candidates, debug });
                 if (!selectedToken)

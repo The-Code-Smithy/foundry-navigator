@@ -114,8 +114,31 @@ export function getTokenDispositionLabel(sourceToken, candidateToken)
     const sourceDisposition = Number(sourceToken?.document?.disposition ?? 0);
     const candidateDisposition = Number(candidateToken?.document?.disposition ?? 0);
 
-    if (candidateDisposition === 0 || sourceDisposition === 0) return "neutral";
+    if (candidateDisposition === 0) return "neutral";
+
+    // Without a friendly or hostile point of view (no token on the scene, or a
+    // neutral one), fall back to the candidate's own disposition so hostile
+    // tokens are still recognised as enemies.
+    if (sourceDisposition === 0)
+    {
+        return candidateDisposition === CONST.TOKEN_DISPOSITIONS.HOSTILE ? "enemy" : "neutral";
+    }
+
     return sourceDisposition === candidateDisposition ? "ally" : "enemy";
+}
+
+export function isTokenDefeated(token)
+{
+    const defeatedStatus = CONFIG.specialStatusEffects?.DEFEATED ?? "dead";
+    if (token?.document?.combatant?.isDefeated) return true;
+    if (token?.actor?.statuses?.has?.(defeatedStatus)) return true;
+
+    // Player characters at 0 HP are dying, not dead, and can still be attacked.
+    if (token?.actor?.type === "character") return false;
+
+    // Requiring a positive max skips actors that don't track HP.
+    const hp = token?.actor?.system?.attributes?.hp;
+    return Number(hp?.max) > 0 && Number(hp?.value) <= 0;
 }
 
 export function getTokenDistance(sourceToken, candidateToken)
@@ -148,39 +171,7 @@ export function getTokenDistance(sourceToken, candidateToken)
     return Number.isFinite(pixels) ? Math.round((pixels / size) * distancePerGrid) : null;
 }
 
-export function getAttackTargetCandidates(app)
-{
-    if (!canvas?.tokens?.placeables?.length) return [];
-
-    const sourceToken = getSceneActorToken(app);
-    const candidates = canvas.tokens.placeables
-        .filter(token => token?.document && token.actor)
-        .filter(token => !token.document.hidden)
-        .map(token => ({
-            token,
-            disposition: getTokenDispositionLabel(sourceToken, token),
-            distance: getTokenDistance(sourceToken, token),
-            sortOrder: getTokenDispositionLabel(sourceToken, token) === "enemy"
-                ? 0
-                : getTokenDispositionLabel(sourceToken, token) === "ally"
-                    ? 1
-                    : getTokenDispositionLabel(sourceToken, token) === "neutral"
-                        ? 2
-                        : 3,
-        }))
-        .sort((left, right) =>
-        {
-            if (left.sortOrder !== right.sortOrder) return left.sortOrder - right.sortOrder;
-            const leftDistance = Number.isFinite(left.distance) ? left.distance : Number.POSITIVE_INFINITY;
-            const rightDistance = Number.isFinite(right.distance) ? right.distance : Number.POSITIVE_INFINITY;
-            if (leftDistance !== rightDistance) return leftDistance - rightDistance;
-            return (left.token.name ?? "").localeCompare(right.token.name ?? "");
-        });
-
-    return candidates;
-}
-
-export function getActivityTargetCandidates(app, { preferSelf = false } = {})
+export function getActivityTargetCandidates(app, { preferSelf = false, enemiesOnly = false } = {})
 {
     if (!canvas?.tokens?.placeables?.length) return [];
 
@@ -217,6 +208,13 @@ export function getActivityTargetCandidates(app, { preferSelf = false } = {})
             }
 
             return { token, disposition, distance, sortOrder };
+        })
+        .filter(({ token, disposition }) =>
+        {
+            // Only enemies are dropped when defeated: allies at 0 HP must stay
+            // listed so they can still be healed.
+            if (disposition === "enemy") return !isTokenDefeated(token);
+            return !enemiesOnly;
         })
         .sort((left, right) =>
         {

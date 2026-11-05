@@ -27,14 +27,12 @@
     <li>Tidy 5e Sheets, including the modern layout</li>
   </ul>
 
-  <h2>What's New in v0.17.1</h2>
+  <h2>What's New in v0.17.2</h2>
   <ul>
-    <li>Added a one-time first-run setup dialog for players so they can quickly choose core Foundry Navigator options
-    </li>
-    <li>Added a per-player toggle for the combat-turn weapon selector</li>
-    <li>Fixed selector behavior so the same per-player checkbox works consistently for both GM and PC users</li>
-    <li>Improved NPC and enemy turn handling so valid attack-capable actions appear in the selector instead of only
-      opening the actor sheet</li>
+    <li>Attack target lists now show only living enemies, on both the sheet and combat-turn selector paths, instead of every token on the scene.</li>
+    <li>Consumable and spell target lists no longer show dead enemies, while allies at 0 HP stay listed so they can still be healed.</li>
+    <li>Enemies are now recognized when the attacker has no token on the scene or a neutral one.</li>
+    <li>The screen reader now announces &quot;No living enemies to target.&quot; when an attack has no valid targets.</li>
   </ul>
 
   <h2>Feature Overview</h2>

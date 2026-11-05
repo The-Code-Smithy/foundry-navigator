@@ -1,3 +1,10 @@
+### v0.17.2
+
+- Attack target lists now show only living enemies, on both the sheet and combat-turn selector paths, instead of every token on the scene.
+- Consumable and spell target lists no longer show dead enemies, while allies at 0 HP stay listed so they can still be healed.
+- Enemies are now recognized when the attacker has no token on the scene or a neutral one.
+- The screen reader now announces "No living enemies to target." when an attack has no valid targets.
+
 ### v0.17.1
 
 - Added first-run per-player setup options for Combat Tunnel and Foundry Navigator key bindings, with the settings available afterward in Module Settings.
