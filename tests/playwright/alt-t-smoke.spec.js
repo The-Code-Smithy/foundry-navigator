@@ -881,3 +881,195 @@ test("target lists on the seeded scene match the real tokens", async ({ page }) 
         "Tester The Brave",
     ]);
 });
+
+async function viewClearedArena(page)
+{
+    await page.evaluate(() => game.scenes.getName("Test Arena Cleared").view());
+    await page.waitForFunction(() => window.canvas?.ready && window.canvas.scene?.name === "Test Arena Cleared");
+}
+
+// Records every write so a message that is quickly replaced still shows up.
+async function recordAnnouncements(page)
+{
+    await page.evaluate(() =>
+    {
+        globalThis.__fnAnnouncements = [];
+        for (const [id, level] of [["fn-aria-live-polite", "polite"], ["fn-aria-live-assertive", "assertive"]])
+        {
+            const region = document.getElementById(id);
+            new MutationObserver(() =>
+            {
+                const text = region.textContent.trim();
+                if (text) globalThis.__fnAnnouncements.push({ level, text });
+            }).observe(region, { childList: true, characterData: true, subtree: true });
+        }
+    });
+}
+
+async function expectNoEnemiesAnnounced(page)
+{
+    await expect(page.locator("#fn-aria-live-polite")).toHaveText("No living enemies to target.");
+    await expect(page.locator(".fn-target-picker__form")).toHaveCount(0);
+
+    const rollButton = page.getByRole("button", { name: /Normal/i }).last();
+    await expect(rollButton).toBeVisible({ timeout: 25000 });
+
+    const announcements = await page.evaluate(() => globalThis.__fnAnnouncements);
+    expect(announcements).toContainEqual({ level: "polite", text: "No living enemies to target." });
+}
+
+test("sheet attacks announce when no living enemies remain", async ({ page }) =>
+{
+    await joinAsTester(page);
+    await viewClearedArena(page);
+
+    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
+    const inventoryTab = sheet.getByRole("tab", { name: /^Inventory$/i });
+    await inventoryTab.click();
+    await expect(inventoryTab).toHaveAttribute("aria-selected", /true/i);
+
+    const useButton = sheet.locator('[data-tidy-section-key="weapon"] .tidy-table-row-container')
+        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
+    await useButton.focus();
+    await expect(useButton).toBeFocused();
+
+    await recordAnnouncements(page);
+    await page.keyboard.press("Enter");
+    await expectNoEnemiesAnnounced(page);
+});
+
+test("combat turn attacks announce when no living enemies remain", async ({ page }) =>
+{
+    await joinAsTester(page);
+    await viewClearedArena(page);
+    await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
+
+    await recordAnnouncements(page);
+    await page.evaluate(() =>
+    {
+        const actor = game.user.character;
+        void globalThis.FoundryNavigatorCombatTunnel.promptCombatTurnWeaponSelection(actor.sheet, actor);
+    });
+
+    const weaponPicker = page.locator(".fn-weapon-picker__form").filter({ visible: true }).last();
+    await expectFocusInside(page, weaponPicker);
+    await weaponPicker.locator('button[type="submit"]').click();
+
+    await expectNoEnemiesAnnounced(page);
+});
+
+async function joinAsGamemaster(page)
+{
+    await page.goto("/join");
+    const joinForm = page.locator("#join-game-form");
+    await expect(joinForm).toBeVisible({ timeout: 15000 });
+
+    const userSelect = joinForm.locator('select[name="userid" i]');
+    await userSelect.selectOption({ label: "Gamemaster" });
+    await joinForm.locator('button[name="join"]').click();
+    await waitForGameReady(page);
+}
+
+async function setGoblinHp(gmPage, hp)
+{
+    await gmPage.evaluate(async value =>
+    {
+        const token = canvas.tokens.placeables.find(candidate => candidate.name === "Test Goblin");
+        await token.actor.update({ "system.attributes.hp.max": value, "system.attributes.hp.value": value });
+    }, hp);
+}
+
+async function getGoblinHp(page)
+{
+    return page.evaluate(() =>
+        canvas.tokens.placeables.find(candidate => candidate.name === "Test Goblin").actor.system.attributes.hp.value);
+}
+
+// Attacks Test Goblin from the Tidy sheet with the keyboard, through to the damage roll.
+async function attackGoblinFromSheet(page)
+{
+    await forceHighRolls(page);
+    await lowerHostileArmorClass(page);
+
+    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
+    const inventoryTab = sheet.getByRole("tab", { name: /^Inventory$/i });
+    await inventoryTab.click();
+    await expect(inventoryTab).toHaveAttribute("aria-selected", /true/i);
+
+    const useButton = sheet.locator('[data-tidy-section-key="weapon"] .tidy-table-row-container')
+        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
+    await useButton.focus();
+    await expect(useButton).toBeFocused();
+
+    await page.keyboard.down("Enter");
+    const targetPicker = await expectTargetPickerReady(page);
+    await page.keyboard.up("Enter");
+    await expect(targetPicker.locator('input[name="fn-target-choice"]')).toHaveCount(1);
+    await targetPicker.locator('button[type="submit"], .dialog-buttons button').last().click();
+
+    await chooseNormalRoll(page);
+
+    const damageButton = page.getByRole("button", { name: /damage/i }).filter({ visible: true }).last();
+    await expect(damageButton).toBeVisible({ timeout: 25000 });
+    await damageButton.click();
+
+    const damageNormalButton = page.getByRole("button", { name: /Normal/i }).filter({ visible: true }).last();
+    await expect(damageNormalButton).toBeVisible({ timeout: 25000 });
+    await damageNormalButton.click();
+
+    return useButton;
+}
+
+async function getLastDamageTotal(page)
+{
+    return page.evaluate(() =>
+    {
+        const message = game.messages.contents.findLast(candidate => candidate.type === "damage");
+        return message?.rolls?.reduce((total, roll) => total + roll.total, 0) ?? null;
+    });
+}
+
+test("a full keyboard attack damages an unowned token through the connected GM", async ({ page, browser }) =>
+{
+    const gmContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+    const gmPage = await gmContext.newPage();
+    const startingHp = 50;
+
+    try
+    {
+        await joinAsGamemaster(gmPage);
+        await setGoblinHp(gmPage, startingHp);
+        await joinAsTester(page);
+
+        const useButton = await attackGoblinFromSheet(page);
+
+        await expect.poll(() => getGoblinHp(gmPage), { timeout: 15000 }).toBeLessThan(startingHp);
+
+        const damage = await getLastDamageTotal(page);
+        expect(damage).toBeGreaterThan(0);
+        expect(await getGoblinHp(gmPage)).toBe(startingHp - damage);
+        await expect(useButton).toBeFocused({ timeout: 25000 });
+    }
+    finally
+    {
+        await setGoblinHp(gmPage, 7).catch(() => undefined);
+        await gmContext.close();
+    }
+});
+
+test("a hit with no GM connected tells the player damage was not applied", async ({ page }) =>
+{
+    const message = "Damage was not applied to Test Goblin. Ask your GM to apply it.";
+
+    await joinAsTester(page);
+    await recordAnnouncements(page);
+    const startingHp = await getGoblinHp(page);
+
+    const useButton = await attackGoblinFromSheet(page);
+
+    await expect.poll(() => page.evaluate(() => globalThis.__fnAnnouncements), { timeout: 15000 })
+        .toContainEqual({ level: "assertive", text: message });
+    await expect(page.locator("#notifications").getByText(message)).toBeVisible();
+    await expect(useButton).toBeFocused({ timeout: 25000 });
+    expect(await getGoblinHp(page)).toBe(startingHp);
+});

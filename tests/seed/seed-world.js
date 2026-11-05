@@ -114,18 +114,28 @@ async function seedWorld({ testWorldId })
         [await createNpc("Test Commoner", NEUTRAL, 7), 700, 700],
     ];
 
-    const scene = await Scene.create({
-        name: "Test Arena",
-        width: 2000,
-        height: 2000,
-        padding: 0,
-        grid: { type: CONST.GRID_TYPES.SQUARE, size: 100 },
-        tokenVision: false,
-    });
-    const tokens = await Promise.all(placements.map(async ([actor, x, y]) =>
-        (await actor.getTokenDocument({ x, y })).toObject()));
-    await scene.createEmbeddedDocuments("Token", tokens);
+    const createScene = async (name, scenePlacements) =>
+    {
+        const newScene = await Scene.create({
+            name,
+            width: 2000,
+            height: 2000,
+            padding: 0,
+            grid: { type: CONST.GRID_TYPES.SQUARE, size: 100 },
+            tokenVision: false,
+            ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
+        });
+        const tokens = await Promise.all(scenePlacements.map(async ([actor, x, y]) =>
+            (await actor.getTokenDocument({ x, y })).toObject()));
+        await newScene.createEmbeddedDocuments("Token", tokens);
+        return newScene;
+    };
+
+    const scene = await createScene("Test Arena", placements);
     await scene.activate();
+
+    // No living enemies here: the character, the dead goblin, and an ally.
+    await createScene("Test Arena Cleared", [placements[0], placements[2], placements[3]]);
 
     return {
         user: tester.name,

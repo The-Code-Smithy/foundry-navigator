@@ -5,20 +5,21 @@ Last updated: 2026-11-05. This is a handoff file so work can resume after a fold
 ## Current state
 
 - v0.17.2 is the current release. Attack target lists show only living enemies, confirmed on real tokens.
-- Test work is on the `test-world-seed` branch, commit `c946ef5`. It is not merged to `main` or pushed.
-- `FOUNDRY_URL` support in `playwright.config.js` was uncommitted when this file was written.
-- The full suite passes 20 of 20 on both Foundry 14.369 and 14.370, with dnd5e 6.0.6 and Tidy 5e 14.4.1.
+- Test work is on the `test-world-seed` branch, pushed to GitHub but not merged to `main`. Run `git status` and `git log` for what's committed.
+- The full suite passes 24 of 24 on Foundry 14.370 with dnd5e 6.0.6 and Tidy 5e 14.4.1. The 20 tests that existed at the time also passed on 14.369.
 
 ## Current focus
 
-Module fixes. The Tidy 5e console errors seen during test runs came from the `setCharacterSheetClass` test helper, not the module, and are fixed. Suggested next step: close the test gaps below.
+Module fixes. The Tidy 5e console errors seen during test runs came from the `setCharacterSheetClass` test helper, not the module, and are fixed. The GM damage path and a full attack on real tokens are now tested.
+
+Unreleased fix: when damage or healing can't be applied, for example with no GM connected, the player now gets a warning and a screen reader announcement instead of silence. This needs a `CHANGELOG.md` entry and version bump in the next release. The main install's copy doesn't have it yet.
 
 ## Known gaps
 
-- The combat test may not reach the path where a connected GM applies damage to a token the player doesn't own.
-- No test triggers the "No living enemies to target." announcement on a real scene.
-- Only the target list is checked against real tokens, not a complete attack.
-- Automated tests can't show how a real screen reader sounds, so do a manual pass before releases.
+- The "No living enemies to target." announcement is tested on both attack paths, but it is polite and the roll dialog's assertive narration follows right after it. Check with a real screen reader that it is actually heard.
+- `roll-application.js` reads `flags.dnd5e.roll.type`, which dnd5e 6 doesn't set. Healing is still detected through the activity type, but healing through a real consumable hasn't been tested.
+- Automated tests can't show how a real screen reader sounds. The user plans a manual walkthrough before updating their remote Foundry games.
+- Open design question: with no valid targets, the attack still continues to the roll dialog. Keep that, or stop at the announcement?
 
 ## Decisions
 
