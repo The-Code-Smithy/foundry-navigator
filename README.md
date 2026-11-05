@@ -93,7 +93,7 @@ Module shortcuts can be changed through Foundry's Configure Controls screen. Kno
 
 Install the module using the manifest URL from the latest GitHub release:
 
-`https://github.com/deathstarjim/foundry-navigator/releases/latest/download/module.json`
+`https://github.com/The-Code-Smithy/foundry-navigator/releases/latest/download/module.json`
 
 If you are testing development builds manually, make sure the manifest and download URLs match real public release artifacts and that the release zip contains `module.json` at the root.
 
