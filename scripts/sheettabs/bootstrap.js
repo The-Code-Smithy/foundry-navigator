@@ -130,9 +130,12 @@ export function registerSheetTabBootstrap({
 
     function onRollDamage(rolls, data, hookName)
     {
-        // Healing only: other consumable damage may depend on a saving throw,
-        // so it must not be applied automatically.
-        if (data.subject?.type === "heal") promoteConsumableTargetToRollApplication(data.subject);
+        // Healing only: other consumable damage may depend on a saving throw, and
+        // temporary HP must not be applied as regular healing.
+        if (data.subject?.type === "heal" && rolls?.[0]?.options?.type === "healing")
+        {
+            promoteConsumableTargetToRollApplication(data.subject);
+        }
         void handleRollDamageHook(rolls, data, hookName);
     }
 

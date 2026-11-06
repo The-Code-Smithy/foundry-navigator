@@ -14,7 +14,11 @@ module.exports = defineConfig({
     },
     use: {
         baseURL: process.env.FOUNDRY_URL ?? "http://localhost:30000",
-        headless: false,
+        // Full Chromium in new headless mode. The default headless shell was about
+        // three times slower here because of how it renders Foundry's canvas.
+        // Add --headed to the test command to watch a run.
+        headless: true,
+        channel: "chromium",
         viewport: {
             width: 1024,
             height: 768,

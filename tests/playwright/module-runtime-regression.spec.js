@@ -208,3 +208,40 @@ test("target candidates exclude non-enemies from attacks and defeated enemies ev
     expect(result.attackAllDead).toEqual([]);
     expect(result.npcAttack).toEqual(["Downed PC"]);
 });
+
+test("target picker covers only single-target healing that restores real HP", async ({ page }) =>
+{
+    await gotoBlankPage(page);
+
+    const result = await page.evaluate(async () =>
+    {
+        const { isSingleTargetHealingActivity } = await import("/modules/foundry-navigator/scripts/sheettabs/inventory-helpers.js");
+        const heal = ({ type = "healing", count = 1, template = "" } = {}) => ({
+            type: "heal",
+            healing: { types: new Set([type]) },
+            target: { affects: { count }, template: { type: template } },
+        });
+
+        return {
+            cureWounds: isSingleTargetHealingActivity(heal()),
+            stringCount: isSingleTargetHealingActivity(heal({ count: "1" })),
+            massHealingWord: isSingleTargetHealingActivity(heal({ count: 6 })),
+            massHeal: isSingleTargetHealingActivity(heal({ count: "" })),
+            massCureWounds: isSingleTargetHealingActivity(heal({ template: "sphere" })),
+            heroism: isSingleTargetHealingActivity(heal({ type: "temphp" })),
+            attack: isSingleTargetHealingActivity({ type: "attack" }),
+            missing: isSingleTargetHealingActivity(null),
+        };
+    });
+
+    expect(result).toEqual({
+        cureWounds: true,
+        stringCount: true,
+        massHealingWord: false,
+        massHeal: false,
+        massCureWounds: false,
+        heroism: false,
+        attack: false,
+        missing: false,
+    });
+});

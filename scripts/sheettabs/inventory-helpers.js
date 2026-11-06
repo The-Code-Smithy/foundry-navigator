@@ -91,6 +91,15 @@ export function isConsumableItemControl(element, app)
     return item?.type === "consumable";
 }
 
+// Excludes temporary HP and multi-target healing, which a single target picker
+// can't apply correctly. A blank count does not mean one target: Mass Heal has none.
+export function isSingleTargetHealingActivity(activity)
+{
+    if (activity?.type !== "heal") return false;
+    if (!activity.healing?.types?.has?.("healing")) return false;
+    return !activity.target?.template?.type && Number(activity.target?.affects?.count) === 1;
+}
+
 export function getSceneActorToken(app)
 {
     const actor = app?.document?.documentName === "Actor"

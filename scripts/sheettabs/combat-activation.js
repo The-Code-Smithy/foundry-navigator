@@ -2,6 +2,7 @@ import
 {
     clearUserTargets,
     getActivityTargetCandidates,
+    isSingleTargetHealingActivity,
     setSingleUserTarget,
     waitForTargetRegistration,
 } from "./inventory-helpers.js";
@@ -631,7 +632,8 @@ export function createCombatActivationHandlers({
         FN_SHEET_TABS_STATE.lastAttackControlDescriptor = getAttackControlDescriptor(activationTarget);
         const attackActivity = context?.attackActivity ?? null;
         const usableActivity = context?.usableActivity ?? null;
-        const isConsumable = context?.isConsumable ?? false;
+        const needsTargetPicker = (context?.isConsumable ?? false)
+            || (context?.itemDocument?.type === "spell" && isSingleTargetHealingActivity(usableActivity));
 
         if (activationTarget.matches(".tidy-table-row-use-button"))
         {
@@ -643,7 +645,7 @@ export function createCombatActivationHandlers({
             }
             else if (usableActivity?.use)
             {
-                if (isConsumable)
+                if (needsTargetPicker)
                 {
                     const targetChosen = await chooseConsumableTarget(app, activationTarget);
                     if (!targetChosen) return;
@@ -677,7 +679,7 @@ export function createCombatActivationHandlers({
         }
         else if (usableActivity?.use && isPrimaryInventoryActivationTarget(activationTarget))
         {
-            if (isConsumable)
+            if (needsTargetPicker)
             {
                 const targetChosen = await chooseConsumableTarget(app, activationTarget);
                 if (!targetChosen) return;

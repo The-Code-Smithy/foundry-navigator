@@ -72,7 +72,7 @@ async function seedWorld({ testWorldId })
 
     const findCompendiumItem = async name =>
     {
-        for (const packId of ["dnd5e.equipment24", "dnd5e.items"])
+        for (const packId of ["dnd5e.equipment24", "dnd5e.items", "dnd5e.spells24", "dnd5e.spells"])
         {
             const pack = game.packs.get(packId);
             const entry = pack?.index.find(candidate => candidate.name === name);
@@ -89,15 +89,21 @@ async function seedWorld({ testWorldId })
     }));
 
     const potion = await findCompendiumItem("Potion of Healing");
-    potion.system.quantity = 5;
+    potion.system.quantity = 50;
+
+    const cureWounds = await findCompendiumItem("Cure Wounds");
+    cureWounds.system.prepared = CONFIG.DND5E.spellPreparationStates.prepared.value;
 
     const character = await Actor.create({
         name: testerName,
         type: "character",
         ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE, [tester.id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER },
-        system: { attributes: { hp: { value: 20, max: 20 } } },
+        system: {
+            attributes: { hp: { value: 20, max: 20 } },
+            spells: { spell1: { value: 50, override: 50 } },
+        },
         prototypeToken: { actorLink: true, disposition: CONST.TOKEN_DISPOSITIONS.FRIENDLY },
-        items: [...weapons, potion],
+        items: [...weapons, potion, cureWounds],
     });
     await tester.update({ character: character.id });
 
