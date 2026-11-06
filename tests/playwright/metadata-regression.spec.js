@@ -127,7 +127,7 @@ test("combat turn picker lists equipped melee and ranged weapons only", () =>
     expect(combatActivation).toContain("spellLevel === 0");
     expect(combatActivation).toContain("item?.system?.preparation?.prepared === true");
     expect(combatActivation).toContain('item?.type === "spell"');
-    expect(combatActivation).toContain("getActivityTargetCandidates(app, { preferSelf: true })");
+    expect(combatActivation).toContain('getActivityTargetCandidates(app, { preferSelf: true, excludeEnemies: activity?.type === "heal" })');
     expect(combatActivation).toContain("getActivityTargetCandidates(app, { enemiesOnly: true })");
     expect(combatActivation).not.toContain("getActivityTargetCandidates(app);");
     expect(combatActivation).toContain("combat spell target selected");

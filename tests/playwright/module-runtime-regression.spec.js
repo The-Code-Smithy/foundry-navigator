@@ -174,6 +174,7 @@ test("target candidates exclude non-enemies from attacks and defeated enemies ev
 
             const attack = names(getActivityTargetCandidates(app, { enemiesOnly: true }));
             const consumable = names(getActivityTargetCandidates(app, { preferSelf: true }));
+            const healing = names(getActivityTargetCandidates(app, { preferSelf: true, excludeEnemies: true }));
 
             // No token for the attacking actor on this scene.
             setScene([makeToken("Goblin", HOSTILE), makeToken("Ally", FRIENDLY)], []);
@@ -192,7 +193,7 @@ test("target candidates exclude non-enemies from attacks and defeated enemies ev
             ], [ogre]);
             const npcAttack = names(getActivityTargetCandidates({ document: { documentName: "Actor", id: "Ogre" } }, { enemiesOnly: true }));
 
-            return { attack, consumable, attackWithoutSource, attackAllDead, npcAttack };
+            return { attack, consumable, healing, attackWithoutSource, attackAllDead, npcAttack };
         }
         finally
         {
@@ -204,6 +205,7 @@ test("target candidates exclude non-enemies from attacks and defeated enemies ev
 
     expect(result.attack).toEqual(["Goblin", "No HP Tracking Construct"]);
     expect(result.consumable).toEqual(["Downed Ally", "Goblin", "Hero", "No HP Tracking Construct", "Shopkeeper"]);
+    expect(result.healing).toEqual(["Downed Ally", "Hero", "Shopkeeper"]);
     expect(result.attackWithoutSource).toEqual([["Goblin", "enemy"]]);
     expect(result.attackAllDead).toEqual([]);
     expect(result.npcAttack).toEqual(["Downed PC"]);

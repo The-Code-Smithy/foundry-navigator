@@ -6,7 +6,7 @@ Last updated: 2026-11-05. This is a handoff file so work can resume after a fold
 
 - v0.17.2 is the latest published release. v0.18.0 is prepared on the `test-world-seed` branch but not merged or published.
 - Test work is on the `test-world-seed` branch, pushed to GitHub but not merged to `main`. Run `git status` and `git log` for what's committed.
-- The full suite passes 29 of 29 on Foundry 14.370 with dnd5e 6.0.6 and Tidy 5e 14.4.1. The 20 tests that existed at the time also passed on 14.369.
+- The full suite passes 30 of 30 on Foundry 14.370 with dnd5e 6.0.6 and Tidy 5e 14.4.1. The 20 tests that existed at the time also passed on 14.369.
 
 ## Current focus
 
@@ -21,6 +21,10 @@ The v0.18.0 fixes are listed in `CHANGELOG.md`. The main install's copy doesn't 
 - If a player picks a potion target, then cancels the Use Ability dialog, that target stays staged. Using the same potion later without the picker, such as with the mouse, could heal the old target. Not tested or fixed.
 - Multi-target healing (Mass Healing Word, Prayer of Healing, Mass Cure Wounds) and temporary HP spells (Heroism, False Life) are deliberately left out of the target picker. From the sheet they still roll without applying anything, and focus may be lost afterward.
 - Healing spells are tested on the Tidy sheet only, not the default dnd5e sheet.
+- The potion and healing spell target picker appears for keyboard use only. A mouse click skips it, so nobody is healed. Whether mouse clicks should get the picker is an open decision.
+- The target picker skips itself silently when the scene has no visible tokens.
+- The suite has never run with Midi-QOL, though a keyboard potion use worked by hand in a world running it.
+- A player who owns a shared actor gets the combat-turn picker on that actor's turn, because the check is ownership.
 - The spell branch in `activateWeaponItem` looks unreachable for players, because the combat-turn picker lists only weapons.
 - Automated tests can't show how a real screen reader sounds. The user plans a manual walkthrough before updating their remote Foundry games.
 - Open design question: with no valid targets, the attack still continues to the roll dialog. Keep that, or stop at the announcement?

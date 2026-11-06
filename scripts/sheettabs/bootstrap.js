@@ -77,11 +77,12 @@ export function registerSheetTabBootstrap({
     {
         if (!isCombatTurnWeaponSelectorEnabled()) return;
         if (!("turn" in changed) && !("round" in changed)) return;
+        // The GM owns every combatant, so the ownership check below can't exclude them.
+        if (game.user?.isGM) return;
 
         const combatant = combat.combatant;
         const canControlCombatant =
-            game.user?.isGM
-            || combatant?.isOwner
+            combatant?.isOwner
             || combatant?.actor?.isOwner
             || combatant?.token?.isOwner
             || combatant?.token?.actor?.isOwner;

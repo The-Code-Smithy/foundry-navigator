@@ -1057,6 +1057,65 @@ test("a full keyboard attack damages an unowned token through the connected GM",
     }
 });
 
+async function startCombatWithTesterFirst(gmPage)
+{
+    await gmPage.evaluate(async ({ testerName }) =>
+    {
+        const tokens = canvas.tokens.placeables;
+        const tester = tokens.find(token => token.name === testerName);
+        const goblin = tokens.find(token => token.name === "Test Goblin");
+        const combat = await Combat.implementation.create({ scene: canvas.scene.id, active: true });
+        await combat.createEmbeddedDocuments("Combatant", [
+            { tokenId: tester.id, sceneId: canvas.scene.id, actorId: tester.actor.id, initiative: 20 },
+            { tokenId: goblin.id, sceneId: canvas.scene.id, actorId: goblin.actor.id, initiative: 10 },
+        ]);
+        await combat.startCombat();
+    }, { testerName: TEST_ACTOR_NAME });
+}
+
+// The turn prompt starts 250ms after the combat update, so allow it time to appear.
+async function expectNoTurnPrompt(page)
+{
+    await page.waitForTimeout(1500);
+    await expect(page.locator(".fn-weapon-picker__form")).toHaveCount(0);
+}
+
+const countOpenActorSheets = page => page.evaluate(() => [...foundry.applications.instances.values()]
+    .filter(app => app.rendered && app.document?.documentName === "Actor").length);
+
+test("the combat turn picker opens only for the player whose turn it is", async ({ page, browser }) =>
+{
+    const gmContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+    const gmPage = await gmContext.newPage();
+    await gmPage.addInitScript(() => localStorage.setItem("foundry-navigator.firstRunSetupVersion", "999"));
+
+    try
+    {
+        await joinAsGamemaster(gmPage);
+        await joinAsTester(page);
+
+        await startCombatWithTesterFirst(gmPage);
+
+        const weaponPicker = page.locator(".fn-weapon-picker__form").filter({ visible: true }).last();
+        await expect(weaponPicker).toBeVisible({ timeout: 25000 });
+        await expectNoTurnPrompt(gmPage);
+        expect(await countOpenActorSheets(gmPage)).toBe(0);
+
+        await page.locator('[data-action="cancel"]').filter({ visible: true }).last().click();
+        await expect(page.locator(".fn-weapon-picker__form")).toHaveCount(0);
+
+        await gmPage.evaluate(() => game.combat.nextTurn());
+        await expectNoTurnPrompt(page);
+        await expectNoTurnPrompt(gmPage);
+        expect(await countOpenActorSheets(gmPage)).toBe(0);
+    }
+    finally
+    {
+        await gmPage.evaluate(() => game.combat?.delete()).catch(() => undefined);
+        await gmContext.close();
+    }
+});
+
 test("a hit with no GM connected tells the player damage was not applied", async ({ page }) =>
 {
     const message = "Damage was not applied to Test Goblin. Ask your GM to apply it.";
@@ -1093,7 +1152,10 @@ async function useHealingItemOn(page, { itemName, tabName, confirmName }, target
     await page.keyboard.down("Enter");
     const targetPicker = await expectTargetPickerReady(page);
     await page.keyboard.up("Enter");
-    await targetPicker.locator(`input[name="fn-target-choice"][aria-label^="${targetName}."]`).check();
+    const choice = name => targetPicker.locator(`input[name="fn-target-choice"][aria-label^="${name}."]`);
+    await expect(choice("Test Goblin")).toHaveCount(0);
+    await expect(choice("Test Commoner")).toHaveCount(1);
+    await choice(targetName).check();
     await targetPicker.locator('button[type="submit"], .dialog-buttons button').last().click();
 
     const confirmButton = page.locator(".application.activity-usage").getByRole("button", { name: confirmName });

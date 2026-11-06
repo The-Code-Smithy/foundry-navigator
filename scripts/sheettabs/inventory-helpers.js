@@ -180,7 +180,7 @@ export function getTokenDistance(sourceToken, candidateToken)
     return Number.isFinite(pixels) ? Math.round((pixels / size) * distancePerGrid) : null;
 }
 
-export function getActivityTargetCandidates(app, { preferSelf = false, enemiesOnly = false } = {})
+export function getActivityTargetCandidates(app, { preferSelf = false, enemiesOnly = false, excludeEnemies = false } = {})
 {
     if (!canvas?.tokens?.placeables?.length) return [];
 
@@ -222,7 +222,7 @@ export function getActivityTargetCandidates(app, { preferSelf = false, enemiesOn
         {
             // Only enemies are dropped when defeated: allies at 0 HP must stay
             // listed so they can still be healed.
-            if (disposition === "enemy") return !isTokenDefeated(token);
+            if (disposition === "enemy") return !excludeEnemies && !isTokenDefeated(token);
             return !enemiesOnly;
         })
         .sort((left, right) =>

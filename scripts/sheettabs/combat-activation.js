@@ -105,12 +105,18 @@ export function createCombatActivationHandlers({
         return true;
     }
 
+    // Healing hides enemies. Other consumables, such as a thrown vial of acid, need them.
+    function getUsableActivityTargetCandidates(app, activity)
+    {
+        return getActivityTargetCandidates(app, { preferSelf: true, excludeEnemies: activity?.type === "heal" });
+    }
+
     async function chooseConsumableTarget(app, element)
     {
         const context = getInventoryActionContext(element, app);
         const itemName = context?.itemName ?? getInventoryRowName(getInventoryRowElement(element));
-        const candidates = getActivityTargetCandidates(app, { preferSelf: true });
         const usableActivity = context?.usableActivity ?? null;
+        const candidates = getUsableActivityTargetCandidates(app, usableActivity);
 
         if (!candidates.length)
         {
@@ -305,7 +311,7 @@ export function createCombatActivationHandlers({
 
         if (item?.type === "spell")
         {
-            const candidates = getActivityTargetCandidates(app, { preferSelf: true });
+            const candidates = getUsableActivityTargetCandidates(app, usableActivity);
             if (candidates.length)
             {
                 const selectedToken = await showAccessibleTargetPicker({ app, itemName, candidates, debug });
