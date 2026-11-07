@@ -986,18 +986,38 @@ async function getTokenHp(page, name)
 }
 
 // Attacks Test Goblin from the Tidy sheet with the keyboard, through to the damage roll.
-async function attackGoblinFromSheet(page)
+// Each sheet marks an item's use control differently.
+const SHEETS = {
+    tidy: {
+        suffix: "",
+        sheetClass: "dnd5e.Tidy5eCharacterSheetQuadrone",
+        useControl: (sheet, itemName) => sheet.locator(".tidy-table-row-container").filter({ hasText: itemName })
+            .filter({ visible: true }).first().locator(".tidy-table-row-use-button"),
+    },
+    default: {
+        suffix: " on the default sheet",
+        sheetClass: "dnd5e.CharacterActorSheet",
+        useControl: (sheet, itemName) => sheet.locator("li.item[data-item-id]").filter({ hasText: itemName })
+            .filter({ visible: true }).first().locator(".item-name[data-action='use']"),
+    },
+};
+
+async function openSheetTab(page, sheetKind, tabName)
+{
+    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, sheetKind.sheetClass);
+    const tab = sheet.getByRole("tab", { name: tabName });
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-selected", /true/i);
+    return sheet;
+}
+
+async function attackGoblinFromSheet(page, sheetKind = SHEETS.tidy)
 {
     await forceHighRolls(page);
     await lowerHostileArmorClass(page);
 
-    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
-    const inventoryTab = sheet.getByRole("tab", { name: /^Inventory$/i });
-    await inventoryTab.click();
-    await expect(inventoryTab).toHaveAttribute("aria-selected", /true/i);
-
-    const useButton = sheet.locator('[data-tidy-section-key="weapon"] .tidy-table-row-container')
-        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
+    const sheet = await openSheetTab(page, sheetKind, /^Inventory$/i);
+    const useButton = sheetKind.useControl(sheet, "Longsword");
     await useButton.focus();
     await expect(useButton).toBeFocused();
 
@@ -1029,33 +1049,36 @@ async function getLastRollTotal(page, messageType)
     }, messageType);
 }
 
-test("a full keyboard attack damages an unowned token through the connected GM", async ({ page, browser }) =>
+for (const sheetKind of [SHEETS.tidy, SHEETS.default])
 {
-    const gmContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
-    const gmPage = await gmContext.newPage();
-    const startingHp = 50;
-
-    try
+    test(`a full keyboard attack damages an unowned token through the connected GM${sheetKind.suffix}`, async ({ page, browser }) =>
     {
-        await joinAsGamemaster(gmPage);
-        await setTokenHp(gmPage, "Test Goblin", startingHp, startingHp);
-        await joinAsTester(page);
+        const gmContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+        const gmPage = await gmContext.newPage();
+        const startingHp = 50;
 
-        const useButton = await attackGoblinFromSheet(page);
+        try
+        {
+            await joinAsGamemaster(gmPage);
+            await setTokenHp(gmPage, "Test Goblin", startingHp, startingHp);
+            await joinAsTester(page);
 
-        await expect.poll(() => getTokenHp(gmPage, "Test Goblin"), { timeout: 15000 }).toBeLessThan(startingHp);
+            const useButton = await attackGoblinFromSheet(page, sheetKind);
 
-        const damage = await getLastRollTotal(page, "damage");
-        expect(damage).toBeGreaterThan(0);
-        expect(await getTokenHp(gmPage, "Test Goblin")).toBe(startingHp - damage);
-        await expect(useButton).toBeFocused({ timeout: 25000 });
-    }
-    finally
-    {
-        await setTokenHp(gmPage, "Test Goblin", 7, 7).catch(() => undefined);
-        await gmContext.close();
-    }
-});
+            await expect.poll(() => getTokenHp(gmPage, "Test Goblin"), { timeout: 15000 }).toBeLessThan(startingHp);
+
+            const damage = await getLastRollTotal(page, "damage");
+            expect(damage).toBeGreaterThan(0);
+            expect(await getTokenHp(gmPage, "Test Goblin")).toBe(startingHp - damage);
+            await expect(useButton).toBeFocused({ timeout: 25000 });
+        }
+        finally
+        {
+            await setTokenHp(gmPage, "Test Goblin", 7, 7).catch(() => undefined);
+            await gmContext.close();
+        }
+    });
+}
 
 async function startCombatWithTesterFirst(gmPage)
 {
@@ -1161,15 +1184,10 @@ const POTION = { itemName: "Potion of Healing", tabName: /^Inventory$/i, confirm
 const CURE_WOUNDS = { itemName: "Cure Wounds", tabName: /^Spells$/i, confirmName: "Cast Spell" };
 
 // Uses a healing item on the named token with the keyboard, through to the healing roll.
-async function useHealingItemOn(page, { itemName, tabName, confirmName }, targetName)
+async function useHealingItemOn(page, { itemName, tabName, confirmName }, targetName, sheetKind = SHEETS.tidy)
 {
-    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
-    const itemTab = sheet.getByRole("tab", { name: tabName });
-    await itemTab.click();
-    await expect(itemTab).toHaveAttribute("aria-selected", /true/i);
-
-    const useButton = sheet.locator(".tidy-table-row-container").filter({ hasText: itemName })
-        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
+    const sheet = await openSheetTab(page, sheetKind, tabName);
+    const useButton = sheetKind.useControl(sheet, itemName);
     await useButton.focus();
     await expect(useButton).toBeFocused();
 
@@ -1204,49 +1222,51 @@ async function closeItemUseWindows(page)
     });
 }
 
-test("mouse clicks open the target picker only when the player turns it on", async ({ page }) =>
+for (const sheetKind of [SHEETS.tidy, SHEETS.default])
 {
-    await joinAsTester(page);
-    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
-    const inventoryTab = sheet.getByRole("tab", { name: "Inventory" });
-    await inventoryTab.click();
-    await expect(inventoryTab).toHaveAttribute("aria-selected", /true/i);
-    const useButton = sheet.locator(".tidy-table-row-container").filter({ hasText: POTION.itemName })
-        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
-    const targetPicker = page.locator(".fn-target-picker__form");
+    test(`mouse clicks open the target picker only when the player turns it on${sheetKind.suffix}`, async ({ page }) =>
+    {
+        await joinAsTester(page);
+        const sheet = await openSheetTab(page, sheetKind, /^Inventory$/i);
+        const useButton = sheetKind.useControl(sheet, POTION.itemName);
+        const targetPicker = page.locator(".fn-target-picker__form");
 
-    // Off by default: a mouse click goes to the normal dnd5e flow.
-    expect(await page.evaluate(() => game.settings.get("foundry-navigator", "useTargetPickerForMouseClicks"))).toBe(false);
-    await useButton.click();
-    await page.waitForTimeout(1500);
-    await expect(targetPicker).toHaveCount(0);
-    await closeItemUseWindows(page);
+        // Off by default: a mouse click goes to the normal dnd5e flow.
+        expect(await page.evaluate(() => game.settings.get("foundry-navigator", "useTargetPickerForMouseClicks"))).toBe(false);
+        await useButton.click();
+        await page.waitForTimeout(1500);
+        await expect(targetPicker).toHaveCount(0);
+        await closeItemUseWindows(page);
 
-    await page.evaluate(() => game.settings.set("foundry-navigator", "useTargetPickerForMouseClicks", true));
-    await useButton.click();
-    await expectTargetPickerReady(page);
-    await page.locator('[data-action="cancel"]').filter({ visible: true }).last().click();
-    await expect(targetPicker).toHaveCount(0);
-    await closeItemUseWindows(page);
-});
+        await page.evaluate(() => game.settings.set("foundry-navigator", "useTargetPickerForMouseClicks", true));
+        await useButton.click();
+        await expectTargetPickerReady(page);
+        await page.locator('[data-action="cancel"]').filter({ visible: true }).last().click();
+        await expect(targetPicker).toHaveCount(0);
+        await closeItemUseWindows(page);
+    });
+}
 
 const getPotionQuantity = page => page.evaluate(() => game.user.character.items.getName("Potion of Healing").system.quantity);
 
-test("a potion heals the player's own token", async ({ page }) =>
+for (const sheetKind of [SHEETS.tidy, SHEETS.default])
 {
-    await joinAsTester(page);
-    await setTokenHp(page, TEST_ACTOR_NAME, 5, 20);
-    const startingPotions = await getPotionQuantity(page);
+    test(`a potion heals the player's own token${sheetKind.suffix}`, async ({ page }) =>
+    {
+        await joinAsTester(page);
+        await setTokenHp(page, TEST_ACTOR_NAME, 5, 20);
+        const startingPotions = await getPotionQuantity(page);
 
-    const useButton = await useHealingItemOn(page, POTION, TEST_ACTOR_NAME);
+        const useButton = await useHealingItemOn(page, POTION, TEST_ACTOR_NAME, sheetKind);
 
-    await expect.poll(() => getTokenHp(page, TEST_ACTOR_NAME), { timeout: 15000 }).toBeGreaterThan(5);
-    const healing = await getLastRollTotal(page, "healing");
-    expect(healing).toBeGreaterThan(0);
-    expect(await getTokenHp(page, TEST_ACTOR_NAME)).toBe(5 + healing);
-    expect(await getPotionQuantity(page)).toBe(startingPotions - 1);
-    await expect(useButton).toBeFocused({ timeout: 25000 });
-});
+        await expect.poll(() => getTokenHp(page, TEST_ACTOR_NAME), { timeout: 15000 }).toBeGreaterThan(5);
+        const healing = await getLastRollTotal(page, "healing");
+        expect(healing).toBeGreaterThan(0);
+        expect(await getTokenHp(page, TEST_ACTOR_NAME)).toBe(5 + healing);
+        expect(await getPotionQuantity(page)).toBe(startingPotions - 1);
+        await expect(useButton).toBeFocused({ timeout: 25000 });
+    });
+}
 
 test("a potion heals a downed ally through the connected GM", async ({ page, browser }) =>
 {
@@ -1276,20 +1296,23 @@ test("a potion heals a downed ally through the connected GM", async ({ page, bro
 
 const getSpellSlots = page => page.evaluate(() => game.user.character.system.spells.spell1.value);
 
-test("a healing spell heals the player's own token", async ({ page }) =>
+for (const sheetKind of [SHEETS.tidy, SHEETS.default])
 {
-    await joinAsTester(page);
-    await setTokenHp(page, TEST_ACTOR_NAME, 5, 20);
-    const startingSlots = await getSpellSlots(page);
+    test(`a healing spell heals the player's own token${sheetKind.suffix}`, async ({ page }) =>
+    {
+        await joinAsTester(page);
+        await setTokenHp(page, TEST_ACTOR_NAME, 5, 20);
+        const startingSlots = await getSpellSlots(page);
 
-    const useButton = await useHealingItemOn(page, CURE_WOUNDS, TEST_ACTOR_NAME);
+        const useButton = await useHealingItemOn(page, CURE_WOUNDS, TEST_ACTOR_NAME, sheetKind);
 
-    await expect.poll(() => getTokenHp(page, TEST_ACTOR_NAME), { timeout: 15000 }).toBeGreaterThan(5);
-    const healing = await getLastRollTotal(page, "healing");
-    expect(await getTokenHp(page, TEST_ACTOR_NAME)).toBe(Math.min(5 + healing, 20));
-    expect(await getSpellSlots(page)).toBe(startingSlots - 1);
-    await expect(useButton).toBeFocused({ timeout: 25000 });
-});
+        await expect.poll(() => getTokenHp(page, TEST_ACTOR_NAME), { timeout: 15000 }).toBeGreaterThan(5);
+        const healing = await getLastRollTotal(page, "healing");
+        expect(await getTokenHp(page, TEST_ACTOR_NAME)).toBe(Math.min(5 + healing, 20));
+        expect(await getSpellSlots(page)).toBe(startingSlots - 1);
+        await expect(useButton).toBeFocused({ timeout: 25000 });
+    });
+}
 
 test("a healing spell heals a downed ally through the connected GM", async ({ page, browser }) =>
 {

@@ -6,7 +6,7 @@ Last updated: 2026-11-05. This is a handoff file so work can resume after a fold
 
 - v0.18.1 was released on 2026-11-07 from `main`. The release workflow attached `module.json` and `module.zip`. v0.17.2 was never released, so the release before it was v0.17.1, the last one supporting Foundry v13.
 - `test-world-seed` was merged into `main` for the release. Run `git status` and `git log` for what is committed.
-- The full suite passes 32 of 32 on Foundry 14.370 with dnd5e 6.0.6 and Tidy 5e 14.4.1. The 20 tests that existed at the time also passed on 14.369.
+- The full suite passes 36 of 36 on Foundry 14.370 with dnd5e 6.0.6 and Tidy 5e 14.4.1. The 20 tests that existed at the time also passed on 14.369.
 
 ## Current focus
 
@@ -20,7 +20,7 @@ The v0.18.1 fixes are listed in `CHANGELOG.md`. The main install has them, and t
 - `roll-application.js` reads `flags.dnd5e.roll.type`, which dnd5e 6 doesn't set. Healing is detected through the activity type instead, and a real potion is now tested.
 - If a player picks a potion target, then cancels the Use Ability dialog, that target stays staged. Using the same potion later without the picker, such as with the mouse, could heal the old target. Not tested or fixed.
 - Multi-target healing (Mass Healing Word, Prayer of Healing, Mass Cure Wounds) and temporary HP spells (Heroism, False Life) are deliberately left out of the target picker. From the sheet they still roll without applying anything, and focus may be lost afterward.
-- Healing spells are tested on the Tidy sheet only, not the default dnd5e sheet.
+- The default dnd5e sheet is covered for a keyboard attack through the GM, a potion and Cure Wounds on the player, and the mouse-click setting. Healing an ally and the combat-turn picker are tested on the Tidy sheet only.
 - By default, the target picker appears for keyboard use only. A mouse click skips it, so nobody is healed unless the healing is applied from the chat card. A player can turn on the Use Target Picker for Mouse Clicks setting, added 2026-11-07, to get the picker on mouse clicks too. It is tested for a potion only, not for attacks or spells.
 - Screen reader activation in browse mode is expected to reach the picker through the assistive click path, but no real screen reader has been tested on it.
 - The target picker skips itself silently when the scene has no visible tokens.
