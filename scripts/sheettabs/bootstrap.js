@@ -15,6 +15,7 @@ export function registerSheetTabBootstrap({
     getRollTotalValue,
     getTargetArmorClass,
     openAttackResultDialog,
+    promoteConsumableTargetToRollApplication,
     handleRollDamageHook,
     registerFocusedItemUseIntercept,
     promptCombatTurnWeaponSelection,
@@ -76,11 +77,12 @@ export function registerSheetTabBootstrap({
     {
         if (!isCombatTurnWeaponSelectorEnabled()) return;
         if (!("turn" in changed) && !("round" in changed)) return;
+        // The GM owns every combatant, so the ownership check below can't exclude them.
+        if (game.user?.isGM) return;
 
         const combatant = combat.combatant;
         const canControlCombatant =
-            game.user?.isGM
-            || combatant?.isOwner
+            combatant?.isOwner
             || combatant?.actor?.isOwner
             || combatant?.token?.isOwner
             || combatant?.token?.actor?.isOwner;
@@ -127,6 +129,17 @@ export function registerSheetTabBootstrap({
         FN_SHEET_TABS_STATE.pendingAttack = null;
     });
 
-    Hooks.on("dnd5e.rollDamage", (rolls, data = {}) => void handleRollDamageHook(rolls, data, "dnd5e.rollDamage"));
-    Hooks.on("dnd5e.rollDamageV2", (rolls, data = {}) => void handleRollDamageHook(rolls, data, "dnd5e.rollDamageV2"));
+    function onRollDamage(rolls, data, hookName)
+    {
+        // Healing only: other consumable damage may depend on a saving throw, and
+        // temporary HP must not be applied as regular healing.
+        if (data.subject?.type === "heal" && rolls?.[0]?.options?.type === "healing")
+        {
+            promoteConsumableTargetToRollApplication(data.subject);
+        }
+        void handleRollDamageHook(rolls, data, hookName);
+    }
+
+    Hooks.on("dnd5e.rollDamage", (rolls, data = {}) => onRollDamage(rolls, data, "dnd5e.rollDamage"));
+    Hooks.on("dnd5e.rollDamageV2", (rolls, data = {}) => onRollDamage(rolls, data, "dnd5e.rollDamageV2"));
 }

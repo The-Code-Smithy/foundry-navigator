@@ -2,6 +2,7 @@ import
 {
     clearUserTargets,
     getActivityTargetCandidates,
+    isSingleTargetHealingActivity,
     setSingleUserTarget,
     waitForTargetRegistration,
 } from "./inventory-helpers.js";
@@ -104,12 +105,18 @@ export function createCombatActivationHandlers({
         return true;
     }
 
+    // Healing hides enemies. Other consumables, such as a thrown vial of acid, need them.
+    function getUsableActivityTargetCandidates(app, activity)
+    {
+        return getActivityTargetCandidates(app, { preferSelf: true, excludeEnemies: activity?.type === "heal" });
+    }
+
     async function chooseConsumableTarget(app, element)
     {
         const context = getInventoryActionContext(element, app);
         const itemName = context?.itemName ?? getInventoryRowName(getInventoryRowElement(element));
-        const candidates = getActivityTargetCandidates(app, { preferSelf: true });
         const usableActivity = context?.usableActivity ?? null;
+        const candidates = getUsableActivityTargetCandidates(app, usableActivity);
 
         if (!candidates.length)
         {
@@ -304,7 +311,7 @@ export function createCombatActivationHandlers({
 
         if (item?.type === "spell")
         {
-            const candidates = getActivityTargetCandidates(app, { preferSelf: true });
+            const candidates = getUsableActivityTargetCandidates(app, usableActivity);
             if (candidates.length)
             {
                 const selectedToken = await showAccessibleTargetPicker({ app, itemName, candidates, debug });
@@ -410,6 +417,8 @@ export function createCombatActivationHandlers({
     function promoteConsumableTargetToRollApplication(activity)
     {
         const pendingConsumable = FN_SHEET_TABS_STATE.pendingConsumableApplication;
+        if (!pendingConsumable) return false;
+
         const pendingActivity = pendingConsumable?.activity;
         const sameActivity = !pendingActivity || activitiesReferToSameThing(pendingActivity, activity);
 
@@ -629,7 +638,8 @@ export function createCombatActivationHandlers({
         FN_SHEET_TABS_STATE.lastAttackControlDescriptor = getAttackControlDescriptor(activationTarget);
         const attackActivity = context?.attackActivity ?? null;
         const usableActivity = context?.usableActivity ?? null;
-        const isConsumable = context?.isConsumable ?? false;
+        const needsTargetPicker = (context?.isConsumable ?? false)
+            || (context?.itemDocument?.type === "spell" && isSingleTargetHealingActivity(usableActivity));
 
         if (activationTarget.matches(".tidy-table-row-use-button"))
         {
@@ -641,7 +651,7 @@ export function createCombatActivationHandlers({
             }
             else if (usableActivity?.use)
             {
-                if (isConsumable)
+                if (needsTargetPicker)
                 {
                     const targetChosen = await chooseConsumableTarget(app, activationTarget);
                     if (!targetChosen) return;
@@ -675,7 +685,7 @@ export function createCombatActivationHandlers({
         }
         else if (usableActivity?.use && isPrimaryInventoryActivationTarget(activationTarget))
         {
-            if (isConsumable)
+            if (needsTargetPicker)
             {
                 const targetChosen = await chooseConsumableTarget(app, activationTarget);
                 if (!targetChosen) return;
@@ -698,6 +708,7 @@ export function createCombatActivationHandlers({
         activateInventoryControl,
         activateWeaponItem,
         openAttackResultDialog,
+        promoteConsumableTargetToRollApplication,
         promptCombatTurnWeaponSelection,
         restoreLastAttackControlFocus,
     };

@@ -1,5 +1,16 @@
 const { test, expect } = require("@playwright/test");
 
+// Foundry locks globals such as canvas once a world is active, so tests that
+// fake them run on an empty page served from the same origin.
+async function gotoBlankPage(page)
+{
+    await page.route("**/fn-test-blank", route => route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><title>Foundry Navigator test page</title>",
+    }));
+    await page.goto("/fn-test-blank");
+}
+
 test("roll application helpers read Foundry roll totals defensively", async ({ page }) =>
 {
     await page.goto("/join");
@@ -27,7 +38,7 @@ test("roll application helpers read Foundry roll totals defensively", async ({ p
 
 test("focused item-use intercept only captures the matching focused attack item", async ({ page }) =>
 {
-    await page.goto("/join");
+    await gotoBlankPage(page);
 
     const result = await page.evaluate(async () =>
     {
@@ -61,6 +72,7 @@ test("focused item-use intercept only captures the matching focused attack item"
 
         try
         {
+            globalThis.game = { settings: { get: () => true } };
             globalThis.CONFIG = { Item: { documentClass: FakeItem } };
             globalThis.libWrapper = null;
 
@@ -113,7 +125,7 @@ test("focused item-use intercept only captures the matching focused attack item"
 
 test("target candidates exclude non-enemies from attacks and defeated enemies everywhere", async ({ page }) =>
 {
-    await page.goto("/join");
+    await gotoBlankPage(page);
 
     const result = await page.evaluate(async () =>
     {
@@ -162,6 +174,7 @@ test("target candidates exclude non-enemies from attacks and defeated enemies ev
 
             const attack = names(getActivityTargetCandidates(app, { enemiesOnly: true }));
             const consumable = names(getActivityTargetCandidates(app, { preferSelf: true }));
+            const healing = names(getActivityTargetCandidates(app, { preferSelf: true, excludeEnemies: true }));
 
             // No token for the attacking actor on this scene.
             setScene([makeToken("Goblin", HOSTILE), makeToken("Ally", FRIENDLY)], []);
@@ -180,7 +193,7 @@ test("target candidates exclude non-enemies from attacks and defeated enemies ev
             ], [ogre]);
             const npcAttack = names(getActivityTargetCandidates({ document: { documentName: "Actor", id: "Ogre" } }, { enemiesOnly: true }));
 
-            return { attack, consumable, attackWithoutSource, attackAllDead, npcAttack };
+            return { attack, consumable, healing, attackWithoutSource, attackAllDead, npcAttack };
         }
         finally
         {
@@ -192,7 +205,45 @@ test("target candidates exclude non-enemies from attacks and defeated enemies ev
 
     expect(result.attack).toEqual(["Goblin", "No HP Tracking Construct"]);
     expect(result.consumable).toEqual(["Downed Ally", "Goblin", "Hero", "No HP Tracking Construct", "Shopkeeper"]);
+    expect(result.healing).toEqual(["Downed Ally", "Hero", "Shopkeeper"]);
     expect(result.attackWithoutSource).toEqual([["Goblin", "enemy"]]);
     expect(result.attackAllDead).toEqual([]);
     expect(result.npcAttack).toEqual(["Downed PC"]);
+});
+
+test("target picker covers only single-target healing that restores real HP", async ({ page }) =>
+{
+    await gotoBlankPage(page);
+
+    const result = await page.evaluate(async () =>
+    {
+        const { isSingleTargetHealingActivity } = await import("/modules/foundry-navigator/scripts/sheettabs/inventory-helpers.js");
+        const heal = ({ type = "healing", count = 1, template = "" } = {}) => ({
+            type: "heal",
+            healing: { types: new Set([type]) },
+            target: { affects: { count }, template: { type: template } },
+        });
+
+        return {
+            cureWounds: isSingleTargetHealingActivity(heal()),
+            stringCount: isSingleTargetHealingActivity(heal({ count: "1" })),
+            massHealingWord: isSingleTargetHealingActivity(heal({ count: 6 })),
+            massHeal: isSingleTargetHealingActivity(heal({ count: "" })),
+            massCureWounds: isSingleTargetHealingActivity(heal({ template: "sphere" })),
+            heroism: isSingleTargetHealingActivity(heal({ type: "temphp" })),
+            attack: isSingleTargetHealingActivity({ type: "attack" }),
+            missing: isSingleTargetHealingActivity(null),
+        };
+    });
+
+    expect(result).toEqual({
+        cureWounds: true,
+        stringCount: true,
+        massHealingWord: false,
+        massHeal: false,
+        massCureWounds: false,
+        heroism: false,
+        attack: false,
+        missing: false,
+    });
 });

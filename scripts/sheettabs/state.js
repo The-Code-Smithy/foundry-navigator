@@ -15,7 +15,7 @@ export const FN_SOCKET_ACTIONS = {
     APPLY_ROLL_RESULT: "applyRollResult",
     APPLY_ROLL_RESULT_RESPONSE: "applyRollResultResponse",
 };
-export const FN_SHEET_TABS_DEBUG = true;
+export const FN_SHEET_TABS_DEBUG = false;
 export const FN_SHEET_HINTS_ANNOUNCED = new Set();
 export const FN_SOCKET_REQUESTS = new Map();
 

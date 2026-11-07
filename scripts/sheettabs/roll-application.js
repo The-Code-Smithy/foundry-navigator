@@ -48,6 +48,14 @@ async function applyRollResultToTarget(targetToken, appliedAmount, options = {})
     throw new Error("Target does not support applyDamage.");
 }
 
+// A failed application otherwise looks identical to a successful one.
+function announceApplicationFailure(targetName, isHealingRoll)
+{
+    const message = `${isHealingRoll ? "Healing" : "Damage"} was not applied to ${targetName}. Ask your GM to apply it.`;
+    ui.notifications?.warn?.(message);
+    globalThis.FoundryNavigatorAnnounce?.assertive?.(message);
+}
+
 function emitModuleSocket(payload)
 {
     game.socket?.emit(FN_MODULE_SOCKET, payload);
@@ -350,6 +358,7 @@ export function createRollApplicationHandlers({
                 error: error?.message ?? String(error),
             });
             restoreLastAttackControlFocus();
+            announceApplicationFailure(pending.targetToken.name, isHealingRoll);
         }
     }
 

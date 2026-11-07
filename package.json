@@ -1,13 +1,15 @@
 {
   "name": "foundry-navigator",
-  "version": "0.17.2",
-  "description": "Keyboard-first and screen-reader-friendly navigation tools for Foundry VTT v13 and v14.",
+  "version": "0.18.1",
+  "description": "Keyboard-first and screen-reader-friendly navigation tools for Foundry VTT v14.",
   "main": "playwright.config.js",
   "directories": {
     "test": "tests"
   },
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:seed": "node tests/seed/seed-world.js",
+    "test:foundry": "npm run test:seed && playwright test"
   },
   "keywords": [],
   "author": "DeathStar Jim",

@@ -12,7 +12,7 @@
 
   <p>
     Foundry Navigator adds keyboard-first and screen-reader-friendly navigation tools to Foundry Virtual Tabletop. It is
-    currently focused on <strong>D&amp;D 5e character sheets and gameplay workflows on Foundry VTT v13 and v14</strong>.
+    currently focused on <strong>D&amp;D 5e character sheets and gameplay workflows on Foundry VTT v14</strong>.
   </p>
   <p>
     The module is designed to reduce reliance on mouse-only controls, hover interactions, and visually locating controls
@@ -21,18 +21,24 @@
 
   <h2>Current Scope</h2>
   <ul>
-    <li>Foundry VTT v13 and v14</li>
+    <li>Foundry VTT v14</li>
     <li>D&amp;D 5e system</li>
     <li>Default D&amp;D 5e actor sheets</li>
     <li>Tidy 5e Sheets, including the modern layout</li>
   </ul>
 
-  <h2>What's New in v0.17.2</h2>
+  <h2>What's New in v0.18.1</h2>
   <ul>
-    <li>Attack target lists now show only living enemies, on both the sheet and combat-turn selector paths, instead of every token on the scene.</li>
-    <li>Consumable and spell target lists no longer show dead enemies, while allies at 0 HP stay listed so they can still be healed.</li>
-    <li>Enemies are now recognized when the attacker has no token on the scene or a neutral one.</li>
-    <li>The screen reader now announces &quot;No living enemies to target.&quot; when an attack has no valid targets.</li>
+    <li>Foundry Navigator now requires Foundry VTT v14. Foundry v13 users can keep using v0.17.2 or earlier.</li>
+    <li>Potions and other healing consumables now heal the target chosen in the target picker. Previously the choice was dropped: the potion was used and the healing rolled, but nobody was healed.</li>
+    <li>Single-target healing spells such as Cure Wounds now ask who to heal when cast from the character sheet, and heal that target. Previously there was no target choice: the spell slot was spent and the healing rolled, but nobody was healed.</li>
+    <li>The combat-turn weapon picker no longer opens for the GM. It now opens only for the player whose turn it is.</li>
+    <li>Healing potions and spells no longer list enemies in the target picker.</li>
+    <li>The GM no longer hears &quot;It is your turn&quot; on every combatant's turn when turn announcements are on.</li>
+    <li>Debug messages no longer fill the browser console.</li>
+    <li>New player setting, Use Target Picker for Mouse Clicks, off by default. When it&#39;s on, clicking the use button for an attack, potion, or single-target healing spell opens the same target picker as the keyboard. The first-run setup dialog appears once more so players can choose it.</li>
+    <li>Focus now returns to the item after a healing consumable is used, instead of being lost.</li>
+    <li>Players now get a warning and a screen reader announcement when damage or healing can't be applied, such as when no GM is connected. Previously the failure was silent.</li>
   </ul>
 
   <h2>Feature Overview</h2>
@@ -64,6 +70,7 @@
     <li>Keyboard-first target selection dialogs for D&amp;D 5e attack and consumable flows</li>
     <li>Distance-aware target ordering</li>
     <li>Self-first consumable targeting when appropriate</li>
+    <li>Optional target picker for mouse clicks on attacks, potions, and single-target healing spells, off by default</li>
     <li>Hit or miss follow-up dialogs after attack rolls</li>
     <li>Direct damage and healing application without chasing chat card controls</li>
     <li>GM-mediated damage and healing application for players acting on unowned hostile tokens</li>
@@ -133,7 +140,7 @@
 
   <h2>Limitations</h2>
   <ul>
-    <li>The most complete support is currently for D&amp;D 5e on Foundry v13 and v14</li>
+    <li>The most complete support is currently for D&amp;D 5e on Foundry v14</li>
     <li>Default D&amp;D 5e sheets and Tidy 5e are the primary supported sheet types</li>
     <li>Other systems and sheet implementations may work partially, but are not the focus of current development</li>
     <li>Accessibility support is still evolving, and some Foundry or third-party module workflows may require further

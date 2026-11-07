@@ -127,7 +127,7 @@ test("combat turn picker lists equipped melee and ranged weapons only", () =>
     expect(combatActivation).toContain("spellLevel === 0");
     expect(combatActivation).toContain("item?.system?.preparation?.prepared === true");
     expect(combatActivation).toContain('item?.type === "spell"');
-    expect(combatActivation).toContain("getActivityTargetCandidates(app, { preferSelf: true })");
+    expect(combatActivation).toContain('getActivityTargetCandidates(app, { preferSelf: true, excludeEnemies: activity?.type === "heal" })');
     expect(combatActivation).toContain("getActivityTargetCandidates(app, { enemiesOnly: true })");
     expect(combatActivation).not.toContain("getActivityTargetCandidates(app);");
     expect(combatActivation).toContain("combat spell target selected");
@@ -139,4 +139,16 @@ test("combat turn picker lists equipped melee and ranged weapons only", () =>
     expect(interactionHelpers).toContain("makeCombatDialogDraggable");
     expect(interactionHelpers).toContain("fn-weapon-picker__description");
     expect(interactionHelpers).toContain('const checked = index === 0 ? \' checked="checked"\' : ""');
+});
+
+test("debug logging ships turned off", () =>
+{
+    const state = fs.readFileSync(path.join(repoRoot, "scripts", "sheettabs", "state.js"), "utf8");
+    expect(state).toContain("export const FN_SHEET_TABS_DEBUG = false;");
+
+    // Sheet markup dumps print whole panels, so automatic ones must follow the flag.
+    const sheettabs = fs.readFileSync(path.join(repoRoot, "scripts", "sheettabs.js"), "utf8");
+    const automaticDumps = sheettabs.match(/^(?!function).*debugSheetMarkup\(root, app\)/gm) ?? [];
+    expect(automaticDumps.length).toBeGreaterThan(0);
+    for (const call of automaticDumps) expect(call).toContain("if (FN_SHEET_TABS_DEBUG)");
 });

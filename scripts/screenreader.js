@@ -45,6 +45,16 @@ Hooks.on("init", () =>
         onChange: () => { },
     });
 
+    game.settings.register('foundry-navigator', 'useTargetPickerForMouseClicks', {
+        name: 'Use Target Picker for Mouse Clicks',
+        hint: 'When on, clicking the use button for an attack, potion, or single-target healing spell opens the same target picker as the keyboard. Requires the Combat Tunnel.',
+        scope: 'client',
+        config: true,
+        type: Boolean,
+        default: false,
+        onChange: () => { },
+    });
+
     game.settings.register('foundry-navigator', 'firstRunSetupShown', {
         name: 'First-Run Setup Dialog Shown',
         hint: 'Internal flag used to prevent showing the first-run setup dialog more than once.',
@@ -394,7 +404,7 @@ function areNavigatorKeybindingsEnabled()
 
 async function maybeShowFirstRunSetupDialog()
 {
-    const setupDialogVersion = 2;
+    const setupDialogVersion = 3;
     if (game.user?.isGM) return;
 
     const shownVersion = Number(game.settings.get('foundry-navigator', 'firstRunSetupVersion')) || 0;
@@ -403,6 +413,7 @@ async function maybeShowFirstRunSetupDialog()
     const combatTunnelEnabled = game.settings.get('foundry-navigator', 'enableCombatTunnel') !== false;
     const keybindingsEnabled = game.settings.get('foundry-navigator', 'enableNavigatorKeybindings') !== false;
     const weaponSelectorEnabled = game.settings.get('foundry-navigator', 'enableCombatTurnWeaponSelector') !== false;
+    const mousePickerEnabled = game.settings.get('foundry-navigator', 'useTargetPickerForMouseClicks') === true;
 
     const DialogV2 = foundry?.applications?.api?.DialogV2;
     if (!DialogV2?.wait)
@@ -434,6 +445,12 @@ async function maybeShowFirstRunSetupDialog()
                     Turn on the combat-turn weapon selector
                 </label>
             </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="useTargetPickerForMouseClicks"${mousePickerEnabled ? ' checked' : ''}>
+                    Open the target picker when I click an attack, potion, or healing spell with the mouse
+                </label>
+            </div>
         </form>
     `;
 
@@ -458,10 +475,12 @@ async function maybeShowFirstRunSetupDialog()
                     const combatTunnel = !!form?.querySelector('input[name="enableCombatTunnel"]')?.checked;
                     const keybindings = !!form?.querySelector('input[name="enableNavigatorKeybindings"]')?.checked;
                     const weaponSelector = !!form?.querySelector('input[name="enableCombatTurnWeaponSelector"]')?.checked;
+                    const mousePicker = !!form?.querySelector('input[name="useTargetPickerForMouseClicks"]')?.checked;
                     return {
                         enableCombatTunnel: combatTunnel,
                         enableNavigatorKeybindings: keybindings,
                         enableCombatTurnWeaponSelector: weaponSelector,
+                        useTargetPickerForMouseClicks: mousePicker,
                     };
                 },
             },
@@ -472,6 +491,7 @@ async function maybeShowFirstRunSetupDialog()
                     enableCombatTunnel: combatTunnelEnabled,
                     enableNavigatorKeybindings: keybindingsEnabled,
                     enableCombatTurnWeaponSelector: weaponSelectorEnabled,
+                    useTargetPickerForMouseClicks: mousePickerEnabled,
                 }),
             },
         ],
@@ -479,6 +499,7 @@ async function maybeShowFirstRunSetupDialog()
             enableCombatTunnel: combatTunnelEnabled,
             enableNavigatorKeybindings: keybindingsEnabled,
             enableCombatTurnWeaponSelector: weaponSelectorEnabled,
+            useTargetPickerForMouseClicks: mousePickerEnabled,
         }),
     });
 
@@ -487,6 +508,7 @@ async function maybeShowFirstRunSetupDialog()
         await game.settings.set('foundry-navigator', 'enableCombatTunnel', result.enableCombatTunnel !== false);
         await game.settings.set('foundry-navigator', 'enableNavigatorKeybindings', result.enableNavigatorKeybindings !== false);
         await game.settings.set('foundry-navigator', 'enableCombatTurnWeaponSelector', result.enableCombatTurnWeaponSelector !== false);
+        await game.settings.set('foundry-navigator', 'useTargetPickerForMouseClicks', result.useTargetPickerForMouseClicks === true);
     }
 
     await game.settings.set('foundry-navigator', 'firstRunSetupShown', true);
@@ -1962,8 +1984,9 @@ Hooks.on("updateCombat", (combat, changed) =>
 
     announcePolite(announcement);
 
-    // If it is now the local player's turn, use an assertive (interrupting) alert
-    if (combatant.isOwner)
+    // If it is now the local player's turn, use an assertive (interrupting) alert.
+    // The GM owns every combatant, so without this check they would hear it every turn.
+    if (combatant.isOwner && !game.user?.isGM)
     {
         announceAssertive(`It is your turn, ${name}.`);
     }

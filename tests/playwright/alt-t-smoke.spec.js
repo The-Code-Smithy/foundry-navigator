@@ -5,6 +5,10 @@ const TEST_ACTOR_NAME = "Tester The Brave";
 
 test.beforeEach(async ({ page }) =>
 {
+    // Each test gets a fresh browser profile, which would otherwise open the
+    // first-run setup dialog on top of the sheet.
+    await page.addInitScript(() => localStorage.setItem("foundry-navigator.firstRunSetupVersion", "999"));
+
     page.on("console", message =>
     {
         // Keep this simple and visible in the terminal for local smoke-test debugging.
@@ -60,7 +64,7 @@ async function joinAsTester(page)
 
         await expect(joinForm).toBeVisible({ timeout: 15000 });
 
-        const userSelect = joinForm.locator('select[name="userid"]');
+        const userSelect = joinForm.locator('select[name="userid" i]');
         await expect(userSelect).toBeVisible();
 
         const userId = await userSelect.evaluate((select, { userName, actorName }) =>
@@ -429,8 +433,9 @@ async function setCharacterSheetClass(page, actorName, sheetClass)
             ?? game.actors?.find(candidate => candidate?.type === "character" && candidate?.isOwner);
         if (!actor?.id) return null;
 
+        // Close the open sheet first: the flag swaps actor.sheet to a new, unrendered instance.
+        if (actor.sheet?.rendered) await actor.sheet.close();
         await actor.setFlag("core", "sheetClass", desiredSheetClass);
-        actor.sheet?.close?.();
         actor.sheet?.render?.(true);
         return actor.id;
     }, { name: actorName, desiredSheetClass: sheetClass });
@@ -851,10 +856,463 @@ test("combat tunnel keeps focus anchored through targeting and damage flow", asy
     }, null, { timeout: 25000 });
 });
 
+test("target lists on the seeded scene match the real tokens", async ({ page }) =>
+{
+    await joinAsTester(page);
 
+    const result = await page.evaluate(async () =>
+    {
+        const { getActivityTargetCandidates } = await import("/modules/foundry-navigator/scripts/sheettabs/inventory-helpers.js");
+        const app = { document: game.user.character };
+        const names = candidates => candidates.map(candidate => candidate.token.name).sort();
 
+        return {
+            attack: names(getActivityTargetCandidates(app, { enemiesOnly: true })),
+            consumable: names(getActivityTargetCandidates(app, { preferSelf: true })),
+        };
+    });
 
+    expect(result.attack).toEqual(["Test Goblin"]);
+    expect(result.consumable).toEqual([
+        "Test Ally",
+        "Test Commoner",
+        "Test Downed Ally",
+        "Test Goblin",
+        "Tester The Brave",
+    ]);
+});
 
+async function viewClearedArena(page)
+{
+    await page.evaluate(() => game.scenes.getName("Test Arena Cleared").view());
+    await page.waitForFunction(() => window.canvas?.ready && window.canvas.scene?.name === "Test Arena Cleared");
+}
 
+// Records every write so a message that is quickly replaced still shows up.
+async function recordAnnouncements(page)
+{
+    await page.evaluate(() =>
+    {
+        globalThis.__fnAnnouncements = [];
+        for (const [id, level] of [["fn-aria-live-polite", "polite"], ["fn-aria-live-assertive", "assertive"]])
+        {
+            const region = document.getElementById(id);
+            new MutationObserver(() =>
+            {
+                const text = region.textContent.trim();
+                if (text) globalThis.__fnAnnouncements.push({ level, text });
+            }).observe(region, { childList: true, characterData: true, subtree: true });
+        }
+    });
+}
 
+async function expectNoEnemiesAnnounced(page)
+{
+    await expect(page.locator("#fn-aria-live-polite")).toHaveText("No living enemies to target.");
+    await expect(page.locator(".fn-target-picker__form")).toHaveCount(0);
 
+    const rollButton = page.getByRole("button", { name: /Normal/i }).last();
+    await expect(rollButton).toBeVisible({ timeout: 25000 });
+
+    const announcements = await page.evaluate(() => globalThis.__fnAnnouncements);
+    expect(announcements).toContainEqual({ level: "polite", text: "No living enemies to target." });
+}
+
+test("sheet attacks announce when no living enemies remain", async ({ page }) =>
+{
+    await joinAsTester(page);
+    await viewClearedArena(page);
+
+    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
+    const inventoryTab = sheet.getByRole("tab", { name: /^Inventory$/i });
+    await inventoryTab.click();
+    await expect(inventoryTab).toHaveAttribute("aria-selected", /true/i);
+
+    const useButton = sheet.locator('[data-tidy-section-key="weapon"] .tidy-table-row-container')
+        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
+    await useButton.focus();
+    await expect(useButton).toBeFocused();
+
+    await recordAnnouncements(page);
+    await page.keyboard.press("Enter");
+    await expectNoEnemiesAnnounced(page);
+});
+
+test("combat turn attacks announce when no living enemies remain", async ({ page }) =>
+{
+    await joinAsTester(page);
+    await viewClearedArena(page);
+    await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
+
+    await recordAnnouncements(page);
+    await page.evaluate(() =>
+    {
+        const actor = game.user.character;
+        void globalThis.FoundryNavigatorCombatTunnel.promptCombatTurnWeaponSelection(actor.sheet, actor);
+    });
+
+    const weaponPicker = page.locator(".fn-weapon-picker__form").filter({ visible: true }).last();
+    await expectFocusInside(page, weaponPicker);
+    await weaponPicker.locator('button[type="submit"]').click();
+
+    await expectNoEnemiesAnnounced(page);
+});
+
+async function joinAsGamemaster(page)
+{
+    await page.goto("/join");
+    const joinForm = page.locator("#join-game-form");
+    await expect(joinForm).toBeVisible({ timeout: 15000 });
+
+    const userSelect = joinForm.locator('select[name="userid" i]');
+    await userSelect.selectOption({ label: "Gamemaster" });
+    await joinForm.locator('button[name="join"]').click();
+    await waitForGameReady(page);
+}
+
+async function setTokenHp(page, name, value, max)
+{
+    await page.evaluate(async ({ name, value, max }) =>
+    {
+        const token = canvas.tokens.placeables.find(candidate => candidate.name === name);
+        await token.actor.update({ "system.attributes.hp.max": max, "system.attributes.hp.value": value });
+    }, { name, value, max });
+}
+
+async function getTokenHp(page, name)
+{
+    return page.evaluate(tokenName =>
+        canvas.tokens.placeables.find(candidate => candidate.name === tokenName).actor.system.attributes.hp.value, name);
+}
+
+// Attacks Test Goblin from the Tidy sheet with the keyboard, through to the damage roll.
+async function attackGoblinFromSheet(page)
+{
+    await forceHighRolls(page);
+    await lowerHostileArmorClass(page);
+
+    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
+    const inventoryTab = sheet.getByRole("tab", { name: /^Inventory$/i });
+    await inventoryTab.click();
+    await expect(inventoryTab).toHaveAttribute("aria-selected", /true/i);
+
+    const useButton = sheet.locator('[data-tidy-section-key="weapon"] .tidy-table-row-container')
+        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
+    await useButton.focus();
+    await expect(useButton).toBeFocused();
+
+    await page.keyboard.down("Enter");
+    const targetPicker = await expectTargetPickerReady(page);
+    await page.keyboard.up("Enter");
+    await expect(targetPicker.locator('input[name="fn-target-choice"]')).toHaveCount(1);
+    await targetPicker.locator('button[type="submit"], .dialog-buttons button').last().click();
+
+    await chooseNormalRoll(page);
+
+    const damageButton = page.getByRole("button", { name: /damage/i }).filter({ visible: true }).last();
+    await expect(damageButton).toBeVisible({ timeout: 25000 });
+    await damageButton.click();
+
+    const damageNormalButton = page.getByRole("button", { name: /Normal/i }).filter({ visible: true }).last();
+    await expect(damageNormalButton).toBeVisible({ timeout: 25000 });
+    await damageNormalButton.click();
+
+    return useButton;
+}
+
+async function getLastRollTotal(page, messageType)
+{
+    return page.evaluate(type =>
+    {
+        const message = game.messages.contents.findLast(candidate => candidate.type === type);
+        return message?.rolls?.reduce((total, roll) => total + roll.total, 0) ?? null;
+    }, messageType);
+}
+
+test("a full keyboard attack damages an unowned token through the connected GM", async ({ page, browser }) =>
+{
+    const gmContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+    const gmPage = await gmContext.newPage();
+    const startingHp = 50;
+
+    try
+    {
+        await joinAsGamemaster(gmPage);
+        await setTokenHp(gmPage, "Test Goblin", startingHp, startingHp);
+        await joinAsTester(page);
+
+        const useButton = await attackGoblinFromSheet(page);
+
+        await expect.poll(() => getTokenHp(gmPage, "Test Goblin"), { timeout: 15000 }).toBeLessThan(startingHp);
+
+        const damage = await getLastRollTotal(page, "damage");
+        expect(damage).toBeGreaterThan(0);
+        expect(await getTokenHp(gmPage, "Test Goblin")).toBe(startingHp - damage);
+        await expect(useButton).toBeFocused({ timeout: 25000 });
+    }
+    finally
+    {
+        await setTokenHp(gmPage, "Test Goblin", 7, 7).catch(() => undefined);
+        await gmContext.close();
+    }
+});
+
+async function startCombatWithTesterFirst(gmPage)
+{
+    await gmPage.evaluate(async ({ testerName }) =>
+    {
+        const tokens = canvas.tokens.placeables;
+        const tester = tokens.find(token => token.name === testerName);
+        const goblin = tokens.find(token => token.name === "Test Goblin");
+        const combat = await Combat.implementation.create({ scene: canvas.scene.id, active: true });
+        await combat.createEmbeddedDocuments("Combatant", [
+            { tokenId: tester.id, sceneId: canvas.scene.id, actorId: tester.actor.id, initiative: 20 },
+            { tokenId: goblin.id, sceneId: canvas.scene.id, actorId: goblin.actor.id, initiative: 10 },
+        ]);
+        await combat.startCombat();
+    }, { testerName: TEST_ACTOR_NAME });
+}
+
+// The turn prompt starts 250ms after the combat update, so allow it time to appear.
+async function expectNoTurnPrompt(page)
+{
+    await page.waitForTimeout(1500);
+    await expect(page.locator(".fn-weapon-picker__form")).toHaveCount(0);
+}
+
+// Turn announcements are off by default. Every assertive announcement is recorded,
+// because later announcements replace the turn alert in the live region.
+async function recordTurnAlerts(page)
+{
+    await page.evaluate(async () =>
+    {
+        await game.settings.set("foundry-navigator", "announceCombatTurns", true);
+        const region = document.getElementById("fn-aria-live-assertive");
+        if (!region) throw new Error("assertive live region missing");
+        globalThis.__fnAssertiveLog = [];
+        new MutationObserver(() => globalThis.__fnAssertiveLog.push(region.textContent.trim()))
+            .observe(region, { childList: true, characterData: true, subtree: true });
+    });
+}
+
+const getTurnAlerts = page => page.evaluate(() => globalThis.__fnAssertiveLog.filter(text => /your turn/i.test(text)));
+
+const countOpenActorSheets = page => page.evaluate(() => [...foundry.applications.instances.values()]
+    .filter(app => app.rendered && app.document?.documentName === "Actor").length);
+
+test("combat turn prompts and alerts reach only the player whose turn it is", async ({ page, browser }) =>
+{
+    const gmContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+    const gmPage = await gmContext.newPage();
+    await gmPage.addInitScript(() => localStorage.setItem("foundry-navigator.firstRunSetupVersion", "999"));
+
+    try
+    {
+        await joinAsGamemaster(gmPage);
+        await joinAsTester(page);
+        await recordTurnAlerts(gmPage);
+        await recordTurnAlerts(page);
+
+        await startCombatWithTesterFirst(gmPage);
+
+        const weaponPicker = page.locator(".fn-weapon-picker__form").filter({ visible: true }).last();
+        await expect(weaponPicker).toBeVisible({ timeout: 25000 });
+        await expectNoTurnPrompt(gmPage);
+        expect(await countOpenActorSheets(gmPage)).toBe(0);
+        await expect.poll(() => getTurnAlerts(page)).toHaveLength(1);
+        expect((await getTurnAlerts(page))[0]).toMatch(/^It is your turn/);
+        expect(await getTurnAlerts(gmPage)).toEqual([]);
+
+        await page.locator('[data-action="cancel"]').filter({ visible: true }).last().click();
+        await expect(page.locator(".fn-weapon-picker__form")).toHaveCount(0);
+
+        await gmPage.evaluate(() => game.combat.nextTurn());
+        await expectNoTurnPrompt(page);
+        await expectNoTurnPrompt(gmPage);
+        expect(await countOpenActorSheets(gmPage)).toBe(0);
+        expect(await getTurnAlerts(page)).toHaveLength(1);
+        expect(await getTurnAlerts(gmPage)).toEqual([]);
+    }
+    finally
+    {
+        await gmPage.evaluate(() => game.combat?.delete()).catch(() => undefined);
+        await gmContext.close();
+    }
+});
+
+test("a hit with no GM connected tells the player damage was not applied", async ({ page }) =>
+{
+    const message = "Damage was not applied to Test Goblin. Ask your GM to apply it.";
+
+    await joinAsTester(page);
+    await recordAnnouncements(page);
+    const startingHp = await getTokenHp(page, "Test Goblin");
+
+    const useButton = await attackGoblinFromSheet(page);
+
+    await expect.poll(() => page.evaluate(() => globalThis.__fnAnnouncements), { timeout: 15000 })
+        .toContainEqual({ level: "assertive", text: message });
+    await expect(page.locator("#notifications").getByText(message)).toBeVisible();
+    await expect(useButton).toBeFocused({ timeout: 25000 });
+    expect(await getTokenHp(page, "Test Goblin")).toBe(startingHp);
+});
+
+const POTION = { itemName: "Potion of Healing", tabName: /^Inventory$/i, confirmName: "Use Ability" };
+const CURE_WOUNDS = { itemName: "Cure Wounds", tabName: /^Spells$/i, confirmName: "Cast Spell" };
+
+// Uses a healing item on the named token with the keyboard, through to the healing roll.
+async function useHealingItemOn(page, { itemName, tabName, confirmName }, targetName)
+{
+    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
+    const itemTab = sheet.getByRole("tab", { name: tabName });
+    await itemTab.click();
+    await expect(itemTab).toHaveAttribute("aria-selected", /true/i);
+
+    const useButton = sheet.locator(".tidy-table-row-container").filter({ hasText: itemName })
+        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
+    await useButton.focus();
+    await expect(useButton).toBeFocused();
+
+    await page.keyboard.down("Enter");
+    const targetPicker = await expectTargetPickerReady(page);
+    await page.keyboard.up("Enter");
+    const choice = name => targetPicker.locator(`input[name="fn-target-choice"][aria-label^="${name}."]`);
+    await expect(choice("Test Goblin")).toHaveCount(0);
+    await expect(choice("Test Commoner")).toHaveCount(1);
+    await choice(targetName).check();
+    await targetPicker.locator('button[type="submit"], .dialog-buttons button').last().click();
+
+    const confirmButton = page.locator(".application.activity-usage").getByRole("button", { name: confirmName });
+    await expect(confirmButton).toBeFocused({ timeout: 25000 });
+    await page.keyboard.press("Enter");
+
+    const rollButton = page.locator(".application.roll-configuration").getByRole("button", { name: "Roll" });
+    await expect(rollButton).toBeFocused({ timeout: 25000 });
+    await page.keyboard.press("Enter");
+
+    return useButton;
+}
+
+async function closeItemUseWindows(page)
+{
+    await page.evaluate(async () =>
+    {
+        for (const app of [...foundry.applications.instances.values()])
+        {
+            if (/activity-usage|roll-configuration/.test(app.element?.className ?? "")) await app.close();
+        }
+    });
+}
+
+test("mouse clicks open the target picker only when the player turns it on", async ({ page }) =>
+{
+    await joinAsTester(page);
+    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
+    const inventoryTab = sheet.getByRole("tab", { name: "Inventory" });
+    await inventoryTab.click();
+    await expect(inventoryTab).toHaveAttribute("aria-selected", /true/i);
+    const useButton = sheet.locator(".tidy-table-row-container").filter({ hasText: POTION.itemName })
+        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
+    const targetPicker = page.locator(".fn-target-picker__form");
+
+    // Off by default: a mouse click goes to the normal dnd5e flow.
+    expect(await page.evaluate(() => game.settings.get("foundry-navigator", "useTargetPickerForMouseClicks"))).toBe(false);
+    await useButton.click();
+    await page.waitForTimeout(1500);
+    await expect(targetPicker).toHaveCount(0);
+    await closeItemUseWindows(page);
+
+    await page.evaluate(() => game.settings.set("foundry-navigator", "useTargetPickerForMouseClicks", true));
+    await useButton.click();
+    await expectTargetPickerReady(page);
+    await page.locator('[data-action="cancel"]').filter({ visible: true }).last().click();
+    await expect(targetPicker).toHaveCount(0);
+    await closeItemUseWindows(page);
+});
+
+const getPotionQuantity = page => page.evaluate(() => game.user.character.items.getName("Potion of Healing").system.quantity);
+
+test("a potion heals the player's own token", async ({ page }) =>
+{
+    await joinAsTester(page);
+    await setTokenHp(page, TEST_ACTOR_NAME, 5, 20);
+    const startingPotions = await getPotionQuantity(page);
+
+    const useButton = await useHealingItemOn(page, POTION, TEST_ACTOR_NAME);
+
+    await expect.poll(() => getTokenHp(page, TEST_ACTOR_NAME), { timeout: 15000 }).toBeGreaterThan(5);
+    const healing = await getLastRollTotal(page, "healing");
+    expect(healing).toBeGreaterThan(0);
+    expect(await getTokenHp(page, TEST_ACTOR_NAME)).toBe(5 + healing);
+    expect(await getPotionQuantity(page)).toBe(startingPotions - 1);
+    await expect(useButton).toBeFocused({ timeout: 25000 });
+});
+
+test("a potion heals a downed ally through the connected GM", async ({ page, browser }) =>
+{
+    const gmContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+    const gmPage = await gmContext.newPage();
+    const allyName = "Test Downed Ally";
+
+    try
+    {
+        await joinAsGamemaster(gmPage);
+        await setTokenHp(gmPage, allyName, 0, 50);
+        await joinAsTester(page);
+
+        const useButton = await useHealingItemOn(page, POTION, allyName);
+
+        await expect.poll(() => getTokenHp(gmPage, allyName), { timeout: 15000 }).toBeGreaterThan(0);
+        const healing = await getLastRollTotal(page, "healing");
+        expect(await getTokenHp(gmPage, allyName)).toBe(healing);
+        await expect(useButton).toBeFocused({ timeout: 25000 });
+    }
+    finally
+    {
+        await setTokenHp(gmPage, allyName, 0, 7).catch(() => undefined);
+        await gmContext.close();
+    }
+});
+
+const getSpellSlots = page => page.evaluate(() => game.user.character.system.spells.spell1.value);
+
+test("a healing spell heals the player's own token", async ({ page }) =>
+{
+    await joinAsTester(page);
+    await setTokenHp(page, TEST_ACTOR_NAME, 5, 20);
+    const startingSlots = await getSpellSlots(page);
+
+    const useButton = await useHealingItemOn(page, CURE_WOUNDS, TEST_ACTOR_NAME);
+
+    await expect.poll(() => getTokenHp(page, TEST_ACTOR_NAME), { timeout: 15000 }).toBeGreaterThan(5);
+    const healing = await getLastRollTotal(page, "healing");
+    expect(await getTokenHp(page, TEST_ACTOR_NAME)).toBe(Math.min(5 + healing, 20));
+    expect(await getSpellSlots(page)).toBe(startingSlots - 1);
+    await expect(useButton).toBeFocused({ timeout: 25000 });
+});
+
+test("a healing spell heals a downed ally through the connected GM", async ({ page, browser }) =>
+{
+    const gmContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+    const gmPage = await gmContext.newPage();
+    const allyName = "Test Downed Ally";
+
+    try
+    {
+        await joinAsGamemaster(gmPage);
+        await setTokenHp(gmPage, allyName, 0, 50);
+        await joinAsTester(page);
+
+        const useButton = await useHealingItemOn(page, CURE_WOUNDS, allyName);
+
+        await expect.poll(() => getTokenHp(gmPage, allyName), { timeout: 15000 }).toBeGreaterThan(0);
+        const healing = await getLastRollTotal(page, "healing");
+        expect(await getTokenHp(gmPage, allyName)).toBe(healing);
+        await expect(useButton).toBeFocused({ timeout: 25000 });
+    }
+    finally
+    {
+        await setTokenHp(gmPage, allyName, 0, 7).catch(() => undefined);
+        await gmContext.close();
+    }
+});

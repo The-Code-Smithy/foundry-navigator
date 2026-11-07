@@ -1,22 +1,28 @@
 # Foundry Navigator
 
-Foundry Navigator adds keyboard-first and screen-reader-friendly navigation tools to Foundry Virtual Tabletop. It is currently focused on **D&D 5e character sheets and gameplay workflows on Foundry VTT v13 and v14**.
+Foundry Navigator adds keyboard-first and screen-reader-friendly navigation tools to Foundry Virtual Tabletop. It is currently focused on **D&D 5e character sheets and gameplay workflows on Foundry VTT v14**.
 
 The module is designed to reduce reliance on mouse-only controls, hover interactions, and visually locating controls during character-sheet navigation and combat.
 
 ## Current Scope
 
-- Foundry VTT v13 and v14
+- Foundry VTT v14
 - D&D 5e system
 - Default D&D 5e actor sheets
 - Tidy 5e Sheets, including the modern layout
 
-## What's New in v0.17.2
+## What's New in v0.18.1
 
-- Attack target lists now show only living enemies, on both the sheet and combat-turn selector paths, instead of every token on the scene.
-- Consumable and spell target lists no longer show dead enemies, while allies at 0 HP stay listed so they can still be healed.
-- Enemies are now recognized when the attacker has no token on the scene or a neutral one.
-- The screen reader now announces "No living enemies to target." when an attack has no valid targets.
+- Foundry Navigator now requires Foundry VTT v14. Foundry v13 users can keep using v0.17.2 or earlier.
+- Potions and other healing consumables now heal the target chosen in the target picker. Previously the choice was dropped: the potion was used and the healing rolled, but nobody was healed.
+- Single-target healing spells such as Cure Wounds now ask who to heal when cast from the character sheet, and heal that target. Previously there was no target choice: the spell slot was spent and the healing rolled, but nobody was healed.
+- The combat-turn weapon picker no longer opens for the GM. It now opens only for the player whose turn it is.
+- Healing potions and spells no longer list enemies in the target picker.
+- The GM no longer hears "It is your turn" on every combatant's turn when turn announcements are on.
+- Debug messages no longer fill the browser console.
+- New player setting, Use Target Picker for Mouse Clicks, off by default. When it's on, clicking the use button for an attack, potion, or single-target healing spell opens the same target picker as the keyboard. The first-run setup dialog appears once more so players can choose it.
+- Focus now returns to the item after a healing consumable is used, instead of being lost.
+- Players now get a warning and a screen reader announcement when damage or healing can't be applied, such as when no GM is connected. Previously the failure was silent.
 
 ## Feature Overview
 
@@ -44,6 +50,7 @@ The module is designed to reduce reliance on mouse-only controls, hover interact
 - Keyboard-first target selection dialogs for D&D 5e attack and consumable flows
 - Distance-aware target ordering
 - Self-first consumable targeting when appropriate
+- Optional target picker for mouse clicks on attacks, potions, and single-target healing spells, off by default
 - Hit or miss follow-up dialogs after attack rolls
 - Direct damage and healing application without chasing chat card controls
 - GM-mediated damage and healing application for players acting on unowned hostile tokens
@@ -99,7 +106,7 @@ If you are testing development builds manually, make sure the manifest and downl
 
 ## Limitations
 
-- The most complete support is currently for D&D 5e on Foundry v13 and v14.
+- The most complete support is currently for D&D 5e on Foundry v14.
 - Default D&D 5e sheets and Tidy 5e are the primary supported sheet types.
 - Other systems and sheet implementations may work partially, but are not the focus of current development.
 - Accessibility support is still evolving, and some Foundry or third-party module workflows may require further refinement.
