@@ -12,7 +12,7 @@
     "test:foundry": "npm run test:seed && playwright test"
   },
   "keywords": [],
-  "author": "DeathStar Jim",
+  "author": "The Code Smithy <info@thecodesmithy.com>",
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {

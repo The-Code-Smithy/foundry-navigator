@@ -5,7 +5,8 @@
   "version": "0.18.1",
   "authors": [
     {
-      "name": "DeathStar Jim",
+      "name": "The Code Smithy",
+      "email": "info@thecodesmithy.com",
       "flags": {}
     }
   ],
@@ -32,6 +33,6 @@
   "manifest": "https://github.com/The-Code-Smithy/foundry-navigator/releases/latest/download/module.json",
   "download": "https://github.com/The-Code-Smithy/foundry-navigator/releases/download/0.18.1/module.zip",
   "readme": "https://github.com/The-Code-Smithy/foundry-navigator#readme",
-  "changelog": "https://github.com/The-Code-Smithy/foundry-navigator#changelog",
+  "changelog": "https://github.com/The-Code-Smithy/foundry-navigator/blob/main/CHANGELOG.md",
   "flags": {}
 }
