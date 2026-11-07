@@ -10,7 +10,13 @@ Last updated: 2026-11-05. This is a handoff file so work can resume after a fold
 
 ## Current focus
 
-Module fixes. The Tidy 5e console errors seen during test runs came from the `setCharacterSheetClass` test helper, not the module, and are fixed. The GM damage path and a full attack on real tokens are now tested.
+Next session plan, set by the user on 2026-11-07, in this order:
+
+1. Test infrastructure: fast Node tests that don't need Foundry, for logic such as target filtering and keybinding migration, and Playwright starting the Foundry test instance itself so the manual launch step goes away.
+2. Accessible D&D 5e level-up, the current priority in `BACKLOG.md`.
+3. Keyboard area-effect placement. The feasibility notes are in `BACKLOG.md`.
+
+v0.18.2 (author metadata only) is held on `main` until more fixes or features are ready; add them to its changelog section. The 14.370 test instance on port 30001 is stopped, so start it before running the suite.
 
 The v0.18.1 fixes are listed in `CHANGELOG.md`. The main install has them, and the user checked everything by hand on 2026-11-07 except a real screen reader. Publishing a GitHub release is what triggers the release workflow.
 
