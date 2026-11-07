@@ -46,6 +46,7 @@ import {
 } from "./sheettabs/tab-helpers.js";
 import {
     FN_SHEET_HINTS_ANNOUNCED,
+    FN_SHEET_TABS_DEBUG,
     FN_SHEET_TABS_STATE,
     debugSheetTabs,
     getActiveActorSheetState as getStoredActiveActorSheetState,
@@ -446,7 +447,7 @@ function activateTabFromKeyboard(root, control, app)
     control.click();
     syncTabKeyboardSupport(root, app);
     focusActivePanel(root, control);
-    requestAnimationFrame(() => debugSheetMarkup(root, app));
+    if (FN_SHEET_TABS_DEBUG) requestAnimationFrame(() => debugSheetMarkup(root, app));
 }
 
 function attachSheetTabHandlers(root, app)
@@ -711,7 +712,8 @@ function enhanceActorSheetTabs(app, html)
     applyInventoryKeyboardSupport(root, app);
     setActiveActorSheet(app, root);
     attachSheetTabHandlers(root, app);
-    debugSheetMarkup(root, app);
+    // The manual dumpSheetMarkup helper still works with debugging off.
+    if (FN_SHEET_TABS_DEBUG) debugSheetMarkup(root, app);
 
     debugSheetTabs("enhanceActorSheetTabs complete", {
         appId: app?.id,

@@ -140,3 +140,15 @@ test("combat turn picker lists equipped melee and ranged weapons only", () =>
     expect(interactionHelpers).toContain("fn-weapon-picker__description");
     expect(interactionHelpers).toContain('const checked = index === 0 ? \' checked="checked"\' : ""');
 });
+
+test("debug logging ships turned off", () =>
+{
+    const state = fs.readFileSync(path.join(repoRoot, "scripts", "sheettabs", "state.js"), "utf8");
+    expect(state).toContain("export const FN_SHEET_TABS_DEBUG = false;");
+
+    // Sheet markup dumps print whole panels, so automatic ones must follow the flag.
+    const sheettabs = fs.readFileSync(path.join(repoRoot, "scripts", "sheettabs.js"), "utf8");
+    const automaticDumps = sheettabs.match(/^(?!function).*debugSheetMarkup\(root, app\)/gm) ?? [];
+    expect(automaticDumps.length).toBeGreaterThan(0);
+    for (const call of automaticDumps) expect(call).toContain("if (FN_SHEET_TABS_DEBUG)");
+});

@@ -1,4 +1,5 @@
-import { getInventoryControlLabel } from "./inventory-helpers.js";
+import { getInventoryActionContext } from "./inventory-activation.js";
+import { getInventoryControlLabel, isSingleTargetHealingActivity } from "./inventory-helpers.js";
 import {
     getInventoryRowElement,
     getInventoryRowName,
@@ -9,6 +10,26 @@ let fnLastPointerDownTime = 0;
 let fnLastKeyboardActivationTime = 0;
 let fnLastKeyboardActivationTarget = null;
 let fnDocumentInventoryAssistiveHandlersRegistered = false;
+
+// Mouse clicks normally go to the sheet's own handlers. With this setting on, a mouse
+// click on an item's use control goes through the target picker, but only for items
+// the keyboard would send through it too.
+function isMouseTargetPickerClick(event, target, app)
+{
+    // The module's own fallback clicks are untrusted and must pass through.
+    if (!event.isTrusted) return false;
+    if (game.settings.get("foundry-navigator", "useTargetPickerForMouseClicks") !== true) return false;
+    if (game.settings.get("foundry-navigator", "enableCombatTunnel") === false) return false;
+
+    const useControl = target.closest(".tidy-table-row-use-button, [data-action='use']");
+    if (!(useControl instanceof HTMLElement)) return false;
+
+    const context = getInventoryActionContext(useControl, app);
+    if (context?.attackActivity?.rollAttack) return true;
+    if (!context?.usableActivity?.use) return false;
+    return context.isConsumable
+        || (context.itemDocument?.type === "spell" && isSingleTargetHealingActivity(context.usableActivity));
+}
 
 export function createInventoryKeyboardHandlers({
     activateInventoryControl,
@@ -82,7 +103,8 @@ export function createInventoryKeyboardHandlers({
         if (!isInventoryKeyboardActionTarget(target)) return false;
 
         const sincePointerDown = Date.now() - fnLastPointerDownTime;
-        if (sincePointerDown >= 0 && sincePointerDown < 750) return false;
+        const isPointerClick = sincePointerDown >= 0 && sincePointerDown < 750;
+        if (isPointerClick && !isMouseTargetPickerClick(event, target, app)) return false;
 
         const {
             resolvedTarget = target,

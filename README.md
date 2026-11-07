@@ -18,6 +18,9 @@ The module is designed to reduce reliance on mouse-only controls, hover interact
 - Single-target healing spells such as Cure Wounds now ask who to heal when cast from the character sheet, and heal that target. Previously there was no target choice: the spell slot was spent and the healing rolled, but nobody was healed.
 - The combat-turn weapon picker no longer opens for the GM. It now opens only for the player whose turn it is.
 - Healing potions and spells no longer list enemies in the target picker.
+- The GM no longer hears "It is your turn" on every combatant's turn when turn announcements are on.
+- Debug messages no longer fill the browser console.
+- New player setting, Use Target Picker for Mouse Clicks, off by default. When it's on, clicking the use button for an attack, potion, or single-target healing spell opens the same target picker as the keyboard. The first-run setup dialog appears once more so players can choose it.
 - Focus now returns to the item after a healing consumable is used, instead of being lost.
 - Players now get a warning and a screen reader announcement when damage or healing can't be applied, such as when no GM is connected. Previously the failure was silent.
 
@@ -47,6 +50,7 @@ The module is designed to reduce reliance on mouse-only controls, hover interact
 - Keyboard-first target selection dialogs for D&D 5e attack and consumable flows
 - Distance-aware target ordering
 - Self-first consumable targeting when appropriate
+- Optional target picker for mouse clicks on attacks, potions, and single-target healing spells, off by default
 - Hit or miss follow-up dialogs after attack rolls
 - Direct damage and healing application without chasing chat card controls
 - GM-mediated damage and healing application for players acting on unowned hostile tokens

@@ -1080,10 +1080,27 @@ async function expectNoTurnPrompt(page)
     await expect(page.locator(".fn-weapon-picker__form")).toHaveCount(0);
 }
 
+// Turn announcements are off by default. Every assertive announcement is recorded,
+// because later announcements replace the turn alert in the live region.
+async function recordTurnAlerts(page)
+{
+    await page.evaluate(async () =>
+    {
+        await game.settings.set("foundry-navigator", "announceCombatTurns", true);
+        const region = document.getElementById("fn-aria-live-assertive");
+        if (!region) throw new Error("assertive live region missing");
+        globalThis.__fnAssertiveLog = [];
+        new MutationObserver(() => globalThis.__fnAssertiveLog.push(region.textContent.trim()))
+            .observe(region, { childList: true, characterData: true, subtree: true });
+    });
+}
+
+const getTurnAlerts = page => page.evaluate(() => globalThis.__fnAssertiveLog.filter(text => /your turn/i.test(text)));
+
 const countOpenActorSheets = page => page.evaluate(() => [...foundry.applications.instances.values()]
     .filter(app => app.rendered && app.document?.documentName === "Actor").length);
 
-test("the combat turn picker opens only for the player whose turn it is", async ({ page, browser }) =>
+test("combat turn prompts and alerts reach only the player whose turn it is", async ({ page, browser }) =>
 {
     const gmContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
     const gmPage = await gmContext.newPage();
@@ -1093,6 +1110,8 @@ test("the combat turn picker opens only for the player whose turn it is", async 
     {
         await joinAsGamemaster(gmPage);
         await joinAsTester(page);
+        await recordTurnAlerts(gmPage);
+        await recordTurnAlerts(page);
 
         await startCombatWithTesterFirst(gmPage);
 
@@ -1100,6 +1119,9 @@ test("the combat turn picker opens only for the player whose turn it is", async 
         await expect(weaponPicker).toBeVisible({ timeout: 25000 });
         await expectNoTurnPrompt(gmPage);
         expect(await countOpenActorSheets(gmPage)).toBe(0);
+        await expect.poll(() => getTurnAlerts(page)).toHaveLength(1);
+        expect((await getTurnAlerts(page))[0]).toMatch(/^It is your turn/);
+        expect(await getTurnAlerts(gmPage)).toEqual([]);
 
         await page.locator('[data-action="cancel"]').filter({ visible: true }).last().click();
         await expect(page.locator(".fn-weapon-picker__form")).toHaveCount(0);
@@ -1108,6 +1130,8 @@ test("the combat turn picker opens only for the player whose turn it is", async 
         await expectNoTurnPrompt(page);
         await expectNoTurnPrompt(gmPage);
         expect(await countOpenActorSheets(gmPage)).toBe(0);
+        expect(await getTurnAlerts(page)).toHaveLength(1);
+        expect(await getTurnAlerts(gmPage)).toEqual([]);
     }
     finally
     {
@@ -1168,6 +1192,43 @@ async function useHealingItemOn(page, { itemName, tabName, confirmName }, target
 
     return useButton;
 }
+
+async function closeItemUseWindows(page)
+{
+    await page.evaluate(async () =>
+    {
+        for (const app of [...foundry.applications.instances.values()])
+        {
+            if (/activity-usage|roll-configuration/.test(app.element?.className ?? "")) await app.close();
+        }
+    });
+}
+
+test("mouse clicks open the target picker only when the player turns it on", async ({ page }) =>
+{
+    await joinAsTester(page);
+    const sheet = await setCharacterSheetClass(page, TEST_ACTOR_NAME, "dnd5e.Tidy5eCharacterSheetQuadrone");
+    const inventoryTab = sheet.getByRole("tab", { name: "Inventory" });
+    await inventoryTab.click();
+    await expect(inventoryTab).toHaveAttribute("aria-selected", /true/i);
+    const useButton = sheet.locator(".tidy-table-row-container").filter({ hasText: POTION.itemName })
+        .filter({ visible: true }).first().locator(".tidy-table-row-use-button");
+    const targetPicker = page.locator(".fn-target-picker__form");
+
+    // Off by default: a mouse click goes to the normal dnd5e flow.
+    expect(await page.evaluate(() => game.settings.get("foundry-navigator", "useTargetPickerForMouseClicks"))).toBe(false);
+    await useButton.click();
+    await page.waitForTimeout(1500);
+    await expect(targetPicker).toHaveCount(0);
+    await closeItemUseWindows(page);
+
+    await page.evaluate(() => game.settings.set("foundry-navigator", "useTargetPickerForMouseClicks", true));
+    await useButton.click();
+    await expectTargetPickerReady(page);
+    await page.locator('[data-action="cancel"]').filter({ visible: true }).last().click();
+    await expect(targetPicker).toHaveCount(0);
+    await closeItemUseWindows(page);
+});
 
 const getPotionQuantity = page => page.evaluate(() => game.user.character.items.getName("Potion of Healing").system.quantity);
 
