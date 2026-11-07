@@ -1,6 +1,6 @@
 ### v0.18.1
 
-- Foundry Navigator now requires Foundry VTT v14. Foundry v13 users can keep using v0.17.2 or earlier.
+- Foundry Navigator now requires Foundry VTT v14. Foundry v13 users can keep using v0.17.1 or earlier.
 - Potions and other healing consumables now heal the target chosen in the target picker. Previously the choice was dropped: the potion was used and the healing rolled, but nobody was healed.
 - Single-target healing spells such as Cure Wounds now ask who to heal when cast from the character sheet, and heal that target. Previously there was no target choice: the spell slot was spent and the healing rolled, but nobody was healed.
 - The combat-turn weapon picker no longer opens for the GM. It now opens only for the player whose turn it is.

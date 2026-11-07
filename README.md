@@ -13,16 +13,16 @@ The module is designed to reduce reliance on mouse-only controls, hover interact
 
 ## What's New in v0.18.1
 
-- Foundry Navigator now requires Foundry VTT v14. Foundry v13 users can keep using v0.17.2 or earlier.
+- Foundry Navigator now requires Foundry VTT v14. Foundry v13 users can keep using v0.17.1 or earlier.
 - Potions and other healing consumables now heal the target chosen in the target picker. Previously the choice was dropped: the potion was used and the healing rolled, but nobody was healed.
 - Single-target healing spells such as Cure Wounds now ask who to heal when cast from the character sheet, and heal that target. Previously there was no target choice: the spell slot was spent and the healing rolled, but nobody was healed.
-- The combat-turn weapon picker no longer opens for the GM. It now opens only for the player whose turn it is.
 - Healing potions and spells no longer list enemies in the target picker.
-- The GM no longer hears "It is your turn" on every combatant's turn when turn announcements are on.
-- Debug messages no longer fill the browser console.
-- New player setting, Use Target Picker for Mouse Clicks, off by default. When it's on, clicking the use button for an attack, potion, or single-target healing spell opens the same target picker as the keyboard. The first-run setup dialog appears once more so players can choose it.
 - Focus now returns to the item after a healing consumable is used, instead of being lost.
 - Players now get a warning and a screen reader announcement when damage or healing can't be applied, such as when no GM is connected. Previously the failure was silent.
+- The combat-turn weapon picker no longer opens for the GM. It now opens only for the player whose turn it is.
+- The GM no longer hears "It is your turn" on every combatant's turn when turn announcements are on.
+- New player setting, Use Target Picker for Mouse Clicks, off by default. When it's on, clicking the use button for an attack, potion, or single-target healing spell opens the same target picker as the keyboard. The first-run setup dialog appears once more so players can choose it.
+- Debug messages no longer fill the browser console.
 
 ## Feature Overview
 

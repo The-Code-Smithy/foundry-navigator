@@ -4,8 +4,8 @@ Last updated: 2026-11-05. This is a handoff file so work can resume after a fold
 
 ## Current state
 
-- v0.17.2 is the latest published release. v0.18.1 is prepared on the `test-world-seed` branch but not merged or published.
-- Test work is on the `test-world-seed` branch, pushed to GitHub but not merged to `main`. Run `git status` and `git log` for what's committed.
+- v0.18.1 was released on 2026-11-07 from `main`. The release workflow attached `module.json` and `module.zip`. v0.17.2 was never released, so the release before it was v0.17.1, the last one supporting Foundry v13.
+- `test-world-seed` was merged into `main` for the release. Run `git status` and `git log` for what is committed.
 - The full suite passes 32 of 32 on Foundry 14.370 with dnd5e 6.0.6 and Tidy 5e 14.4.1. The 20 tests that existed at the time also passed on 14.369.
 
 ## Current focus
