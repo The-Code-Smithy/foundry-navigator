@@ -1,3 +1,8 @@
+### v0.18.2
+
+- The module author is now listed as The Code Smithy, with info@thecodesmithy.com as the contact address.
+- The changelog link in the module manifest now opens CHANGELOG.md on GitHub.
+
 ### v0.18.1
 
 - Foundry Navigator now requires Foundry VTT v14. Foundry v13 users can keep using v0.17.1 or earlier.

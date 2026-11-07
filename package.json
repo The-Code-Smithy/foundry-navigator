@@ -1,6 +1,6 @@
 {
   "name": "foundry-navigator",
-  "version": "0.18.1",
+  "version": "0.18.2",
   "description": "Keyboard-first and screen-reader-friendly navigation tools for Foundry VTT v14.",
   "main": "playwright.config.js",
   "directories": {
