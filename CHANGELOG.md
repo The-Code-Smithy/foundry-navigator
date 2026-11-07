@@ -1,4 +1,4 @@
-### v0.18.0
+### v0.18.1
 
 - Foundry Navigator now requires Foundry VTT v14. Foundry v13 users can keep using v0.17.2 or earlier.
 - Potions and other healing consumables now heal the target chosen in the target picker. Previously the choice was dropped: the potion was used and the healing rolled, but nobody was healed.

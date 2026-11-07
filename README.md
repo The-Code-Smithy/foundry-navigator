@@ -11,7 +11,7 @@ The module is designed to reduce reliance on mouse-only controls, hover interact
 - Default D&D 5e actor sheets
 - Tidy 5e Sheets, including the modern layout
 
-## What's New in v0.18.0
+## What's New in v0.18.1
 
 - Foundry Navigator now requires Foundry VTT v14. Foundry v13 users can keep using v0.17.2 or earlier.
 - Potions and other healing consumables now heal the target chosen in the target picker. Previously the choice was dropped: the potion was used and the healing rolled, but nobody was healed.

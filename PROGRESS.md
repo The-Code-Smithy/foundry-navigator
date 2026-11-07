@@ -4,7 +4,7 @@ Last updated: 2026-11-05. This is a handoff file so work can resume after a fold
 
 ## Current state
 
-- v0.17.2 is the latest published release. v0.18.0 is prepared on the `test-world-seed` branch but not merged or published.
+- v0.17.2 is the latest published release. v0.18.1 is prepared on the `test-world-seed` branch but not merged or published.
 - Test work is on the `test-world-seed` branch, pushed to GitHub but not merged to `main`. Run `git status` and `git log` for what's committed.
 - The full suite passes 32 of 32 on Foundry 14.370 with dnd5e 6.0.6 and Tidy 5e 14.4.1. The 20 tests that existed at the time also passed on 14.369.
 
@@ -12,7 +12,7 @@ Last updated: 2026-11-05. This is a handoff file so work can resume after a fold
 
 Module fixes. The Tidy 5e console errors seen during test runs came from the `setCharacterSheetClass` test helper, not the module, and are fixed. The GM damage path and a full attack on real tokens are now tested.
 
-The v0.18.0 fixes are listed in `CHANGELOG.md`. The main install's copy doesn't have them yet. Publishing a GitHub release is what triggers the release workflow.
+The v0.18.1 fixes are listed in `CHANGELOG.md`. The main install has them, and the user checked everything by hand on 2026-11-07 except a real screen reader. Publishing a GitHub release is what triggers the release workflow.
 
 ## Known gaps
 
@@ -33,7 +33,7 @@ The v0.18.0 fixes are listed in `CHANGELOG.md`. The main install's copy doesn't 
 ## Decisions
 
 - Compatibility is needed only within v14. v13 support is not needed.
-- v0.18.0 sets `minimum: "14"`. Older releases remain available for v13 users. Revisit only if there is real demand.
+- v0.18.1 sets `minimum: "14"`. Older releases remain available for v13 users. Revisit only if there is real demand.
 
 ## Running the tests
 
